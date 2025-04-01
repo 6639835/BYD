@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比亚迪汽车 - 2024年第一季度销量排行榜</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2/dist/echarts-gl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.0/dist/countUp.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+            line-height: 1.5;
+        }
+        .container {
+            width: 100vw;
+            padding: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #000 0%, #1a1f3c 100%);
+            will-change: opacity;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(62, 236, 172, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(238, 116, 225, 0.15) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .header {
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        .header h1 {
+            font-size: 72px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #3eecac 0%, #ee74e1 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-fill-color: transparent;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease forwards;
+        }
+        .header .subtitle {
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 20px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease 0.3s forwards;
+        }
+        .header .logo {
+            height: 100px;
+            margin-bottom: 40px;
+            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease 0.6s forwards;
+        }
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            animation: fadeIn 1s ease 1s forwards;
+        }
+        .scroll-indicator span {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .scroll-indicator .arrow {
+            width: 20px;
+            height: 20px;
+            border-right: 2px solid rgba(255, 255, 255, 0.6);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+            transform: rotate(45deg);
+            animation: scrollDown 2s ease-in-out infinite;
+        }
+        @keyframes scrollDown {
+            0%, 20% { transform: rotate(45deg) translate(0, 0); }
+            50% { transform: rotate(45deg) translate(10px, 10px); }
+            80%, 100% { transform: rotate(45deg) translate(0, 0); }
+        }
+        .dashboard {
+            padding: 100px 20px;
+            background: #000;
+            position: relative;
+        }
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 30px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            will-change: transform;
+        }
+        .kpi-card:hover::before {
+            transform: translateX(100%);
+        }
+        .kpi-title {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 15px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .kpi-value {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.8));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-fill-color: transparent;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+        .kpi-change {
+            font-size: 16px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .kpi-change.positive {
+            color: #00e676;
+            background: rgba(0, 230, 118, 0.1);
+        }
+        .kpi-change.negative {
+            color: #ff5252;
+            background: rgba(255, 82, 82, 0.1);
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 30px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .card-title .refresh {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .card-title .refresh:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(180deg);
+        }
+        .chart {
+            width: 100%;
+            height: 400px;
+        }
+        .card-large {
+            grid-column: span 2;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+        @media (max-width: 1200px) {
+            .kpis {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header h1 {
+                font-size: 56px;
+            }
+        }
+        @media (max-width: 992px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .card-large {
+                grid-column: span 1;
+            }
+            .header h1 {
+                font-size: 48px;
+            }
+            .header .subtitle {
+                font-size: 20px;
+            }
+        }
+        @media (max-width: 768px) {
+            .hero-section {
+                height: 80vh;
+            }
+            .header h1 {
+                font-size: 36px;
+            }
+            .header .subtitle {
+                font-size: 18px;
+            }
+            .header .logo {
+                height: 80px;
+            }
+            .kpi-value {
+                font-size: 36px;
+            }
+            .card {
+                padding: 20px;
+            }
+            .chart {
+                height: 300px;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-section::before {
+                animation: none;
+            }
+            .header h1, .header .subtitle, .header .logo {
+                opacity: 1;
+                transform: none;
+                animation: none;
+            }
+            .scroll-indicator {
+                opacity: 1;
+                animation: none;
+            }
+            .scroll-indicator .arrow {
+                animation: none;
+            }
+            .kpi-card:hover {
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero-section">
+            <div class="header">
+                <img src="./byd-logo.png" alt="BYD Logo" class="logo">
+                <h1>比亚迪汽车<br>2024年第一季度销量排行榜</h1>
+                <div class="subtitle">引领新能源汽车革命，创造行业新纪录</div>
+            </div>
+            <div class="scroll-indicator">
+                <span>Scroll to explore</span>
+                <div class="arrow"></div>
+            </div>
+        </section>
+
+        <section class="dashboard">
+            <div class="kpis">
+                <div class="kpi-card">
+                    <div class="kpi-title">总销量</div>
+                    <div class="kpi-value" id="total-sales">0</div>
+                    <div class="kpi-change positive">↑ 13.4% 同比</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">热销车型</div>
+                    <div class="kpi-value">秦PLUS DM-i</div>
+                    <div class="kpi-change">108,000 辆</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">DM-i车型占比</div>
+                    <div class="kpi-value" id="hybrid-percent">0%</div>
+                    <div class="kpi-change positive">↑ 4.2% 环比</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">市场份额</div>
+                    <div class="kpi-value">26.8%</div>
+                    <div class="kpi-change positive">↑ 3.5% 同比</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card card-large">
+                    <div class="card-title">
+                        <span>车型销量排行 TOP 10</span>
+                        <span class="refresh" onclick="refreshChart('main-chart')">↻ 刷新</span>
+                    </div>
+                    <div class="chart" id="main-chart"></div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">
+                        <span>销量类型分布</span>
+                        <span class="refresh" onclick="refreshChart('pie-chart')">↻ 刷新</span>
+                    </div>
+                    <div class="chart" id="pie-chart"></div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">
+                        <span>月度销量趋势</span>
+                        <span class="refresh" onclick="refreshChart('trend-chart')">↻ 刷新</span>
+                    </div>
+                    <div class="chart" id="trend-chart"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 数据
+        const salesData = {
+            models: [
+                '秦PLUS DM-i', '宋PLUS DM-i', '元PLUS', '海豚', 
+                '汉EV', '唐DM-i', '海豹DM-i', '宋Pro DM-i', 
+                '驱逐舰05', '元UP'
+            ],
+            sales: [108000, 92000, 80000, 75000, 62000, 55000, 50000, 45000, 40000, 35000],
+            monthlyTrend: {
+                '1月': [38000, 31000, 26000, 25000, 21000, 18000, 16000, 15000, 13000, 12000],
+                '2月': [32000, 28000, 24000, 23000, 19000, 17000, 15000, 14000, 12000, 11000],
+                '3月': [38000, 33000, 30000, 27000, 22000, 20000, 19000, 16000, 15000, 12000]
+            },
+            types: {
+                'DM-i混动': 335000,
+                'EV纯电': 215000,
+                '燃油车': 70000
+            }
+        };
+
+        // 计算总销量和混动占比
+        const totalSales = salesData.sales.reduce((a, b) => a + b, 0);
+        const hybridSales = salesData.sales[0] + salesData.sales[1] + salesData.sales[5] + 
+                         salesData.sales[6] + salesData.sales[7];
+        const hybridPercent = (hybridSales / totalSales * 100).toFixed(1);
+
+        // 数字动画
+        setTimeout(() => {
+            new CountUp('total-sales', 0, totalSales).start();
+            new CountUp('hybrid-percent', 0, hybridPercent, {
+                suffix: '%'
+            }).start();
+        }, 1000);
+
+        // 配置echarts主题
+        const themes = {
+            color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
+                    '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#6188D7'],
+            backgroundColor: 'transparent',
+            textStyle: {
+                color: '#fff'
+            },
+            title: {
+                textStyle: {
+                    color: '#fff'
+                }
+            },
+            line: {
+                itemStyle: {
+                    borderWidth: 1
+                },
+                lineStyle: {
+                    width: 2
+                },
+                symbolSize: 4,
+                symbol: 'circle',
+                smooth: true
+            },
+            radar: {
+                itemStyle: {
+                    borderWidth: 1
+                },
+                lineStyle: {
+                    width: 2
+                },
+                symbolSize: 4,
+                symbol: 'circle',
+                smooth: true
+            },
+            bar: {
+                itemStyle: {
+                    barBorderWidth: 0,
+                    barBorderColor: '#ccc'
+                }
+            },
+            pie: {
+                itemStyle: {
+                    borderWidth: 0,
+                    borderColor: '#ccc'
+                }
+            },
+            gauge: {
+                itemStyle: {
+                    borderWidth: 0,
+                    borderColor: '#ccc'
+                }
+            }
+        };
+
+        // 初始化图表和引用对象
+        let charts = {};
+
+        // 初始化各图表
+        function initCharts() {
+            // 主图表 - 车型销量排行
+            const mainChart = echarts.init(document.getElementById('main-chart'));
+            const mainOption = {
+                grid: {
+                    left: '3%',
+                    right: '6%',
+                    bottom: '3%',
+                    top: '3%',
+                    containLabel: true
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: '{b}: {c} 辆'
+                },
+                xAxis: {
+                    type: 'value',
+                    name: '销量（辆）',
+                    nameTextStyle: {
+                        color: 'rgba(255, 255, 255, 0.6)'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: 'rgba(255, 255, 255, 0.6)'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'category',
+                    data: salesData.models.slice().reverse(),
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        interval: 0
+                    }
+                },
+                series: [{
+                    name: '销量',
+                    type: 'bar',
+                    data: salesData.sales.slice().reverse(),
+                    label: {
+                        show: true,
+                        position: 'right',
+                        formatter: '{c} 辆',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    },
+                    itemStyle: {
+                        borderRadius: [0, 4, 4, 0],
+                        color: function(params) {
+                            const colorList = [
+                                '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
+                                '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#6188D7'
+                            ];
+                            return new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                { offset: 0, color: colorList[params.dataIndex] + '80' },
+                                { offset: 1, color: colorList[params.dataIndex] }
+                            ]);
+                        }
+                    }
+                }],
+                animationDuration: 2000,
+                animationEasing: 'elasticOut'
+            };
+            mainChart.setOption(mainOption);
+
+            // 饼图 - 销量类型分布
+            const pieChart = echarts.init(document.getElementById('pie-chart'));
+            const pieOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} 辆 ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    textStyle: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                series: [
+                    {
+                        name: '销量类型',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['60%', '50%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#000',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '18',
+                                fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: [
+                            { 
+                                value: salesData.types['DM-i混动'], 
+                                name: 'DM-i混动',
+                                itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    {offset: 0, color: '#3eecac'},
+                                    {offset: 1, color: '#3ba272'}
+                                ])}
+                            },
+                            { 
+                                value: salesData.types['EV纯电'], 
+                                name: 'EV纯电',
+                                itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    {offset: 0, color: '#ee74e1'},
+                                    {offset: 1, color: '#9a60b4'}
+                                ])}
+                            },
+                            { 
+                                value: salesData.types['燃油车'], 
+                                name: '燃油车',
+                                itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    {offset: 0, color: '#fac858'},
+                                    {offset: 1, color: '#fc8452'}
+                                ])}
+                            }
+                        ]
+                    }
+                ],
+                animationDuration: 1500,
+                animationEasing: 'elasticOut'
+            };
+            pieChart.setOption(pieOption);
+
+            // 趋势图 - 月度销量趋势
+            const trendChart = echarts.init(document.getElementById('trend-chart'));
+            const trendOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                legend: {
+                    data: ['1月', '2月', '3月'],
+                    textStyle: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    top: 'bottom'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '15%',
+                    top: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['秦PLUS DM-i', '宋PLUS DM-i', '元PLUS', '海豚', '汉EV'],
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        rotate: 45,
+                        fontSize: 10
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '销量',
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: 'rgba(255, 255, 255, 0.6)'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: '1月',
+                        type: 'bar',
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: salesData.monthlyTrend['1月'].slice(0, 5),
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {offset: 0, color: '#5470c6'},
+                                {offset: 1, color: '#73c0de'}
+                            ])
+                        }
+                    },
+                    {
+                        name: '2月',
+                        type: 'bar',
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: salesData.monthlyTrend['2月'].slice(0, 5),
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {offset: 0, color: '#91cc75'},
+                                {offset: 1, color: '#3ba272'}
+                            ])
+                        }
+                    },
+                    {
+                        name: '3月',
+                        type: 'bar',
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: salesData.monthlyTrend['3月'].slice(0, 5),
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {offset: 0, color: '#ee6666'},
+                                {offset: 1, color: '#fc8452'}
+                            ])
+                        }
+                    }
+                ],
+                animationDuration: 1500,
+                animationEasing: 'elasticOut'
+            };
+            trendChart.setOption(trendOption);
+
+            // 保存图表引用
+            charts = {
+                mainChart,
+                pieChart,
+                trendChart
+            };
+
+            // 窗口调整大小事件
+            window.addEventListener('resize', function() {
+                mainChart.resize();
+                pieChart.resize();
+                trendChart.resize();
+            });
+
+            return charts;
+        }
+
+        // 图表刷新动画
+        function refreshChart(chartId) {
+            if (!charts || Object.keys(charts).length === 0) {
+                charts = initCharts();
+            }
+            
+            let targetChart;
+            if (chartId === 'main-chart') {
+                targetChart = charts.mainChart;
+            } else if (chartId === 'pie-chart') {
+                targetChart = charts.pieChart;
+            } else if (chartId === 'trend-chart') {
+                targetChart = charts.trendChart;
+            }
+            
+            if (targetChart) {
+                const option = targetChart.getOption();
+                targetChart.clear();
+                setTimeout(() => {
+                    targetChart.setOption(option);
+                }, 100);
+            }
+        }
+
+        // 监听页面滚动，添加视差效果
+        window.addEventListener('scroll', function() {
+            const scrollY = window.scrollY;
+            const heroSection = document.querySelector('.hero-section');
+            if (heroSection) {
+                heroSection.style.backgroundPosition = `50% ${scrollY * 0.5}px`;
+            }
+        });
+
+        // 初始化所有图表
+        document.addEventListener('DOMContentLoaded', initCharts);
+    </script>
+</body>
+</html> 
