@@ -7,21 +7,42 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2/dist/echarts-gl.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.0/dist/countUp.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #3eecac;
+            --secondary-color: #ee74e1;
+            --dark-bg: #0a0a1a;
+            --card-bg: rgba(255, 255, 255, 0.04);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --success-color: #00e676;
+            --danger-color: #ff5252;
+            --transition-ease: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: "Noto Sans SC", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         body {
-            background: #000;
-            color: #fff;
+            background: var(--dark-bg);
+            color: var(--text-primary);
             overflow-x: hidden;
             min-height: 100vh;
             position: relative;
             line-height: 1.5;
+        }
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
         }
         .container {
             width: 100vw;
@@ -39,7 +60,7 @@
             padding: 0 20px;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(180deg, #000 0%, #1a1f3c 100%);
+            background: radial-gradient(circle at center, rgba(40, 40, 80, 0.5) 0%, rgba(10, 10, 26, 0.8) 70%);
             will-change: opacity;
         }
         .hero-section::before {
@@ -55,8 +76,8 @@
             animation: pulse 8s ease-in-out infinite;
         }
         @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
         }
         .header {
             text-align: center;
@@ -66,7 +87,7 @@
         .header h1 {
             font-size: 72px;
             font-weight: 700;
-            background: linear-gradient(90deg, #3eecac 0%, #ee74e1 100%);
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -77,10 +98,11 @@
             opacity: 0;
             transform: translateY(30px);
             animation: fadeInUp 1s ease forwards;
+            text-shadow: 0 0 30px rgba(62, 236, 172, 0.3);
         }
         .header .subtitle {
             font-size: 24px;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--text-secondary);
             margin-top: 20px;
             font-weight: 500;
             opacity: 0;
@@ -88,12 +110,16 @@
             animation: fadeInUp 1s ease 0.3s forwards;
         }
         .header .logo {
-            height: 100px;
+            height: 120px;
             margin-bottom: 40px;
-            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+            filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.4));
             opacity: 0;
             transform: translateY(30px);
-            animation: fadeInUp 1s ease 0.6s forwards;
+            animation: fadeInUp 1s ease 0.6s forwards, glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(62, 236, 172, 0.3)); }
+            to { filter: drop-shadow(0 0 30px rgba(238, 116, 225, 0.5)); }
         }
         .scroll-indicator {
             position: absolute;
@@ -141,15 +167,16 @@
             margin-right: auto;
         }
         .kpi-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg);
             border-radius: 30px;
             padding: 30px;
             text-align: center;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-color);
+            transition: var(--transition-ease);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
         .kpi-card::before {
             content: '';
@@ -164,7 +191,8 @@
         }
         .kpi-card:hover {
             transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(62, 236, 172, 0.2);
+            border-color: rgba(62, 236, 172, 0.3);
             will-change: transform;
         }
         .kpi-card:hover::before {
@@ -180,13 +208,22 @@
         .kpi-value {
             font-size: 48px;
             font-weight: 700;
-            background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.8));
+            background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.8));
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             text-fill-color: transparent;
             margin-bottom: 10px;
             line-height: 1;
+            transition: var(--transition-ease);
+        }
+        .kpi-card:hover .kpi-value {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-fill-color: transparent;
+            transform: scale(1.05);
         }
         .kpi-change {
             font-size: 16px;
@@ -213,16 +250,18 @@
             margin-right: auto;
         }
         .card {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg);
             border-radius: 30px;
             padding: 30px;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-color);
+            transition: var(--transition-ease);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(62, 236, 172, 0.1);
+            border-color: rgba(62, 236, 172, 0.2);
         }
         .card-title {
             font-size: 24px;
@@ -236,15 +275,19 @@
         }
         .card-title .refresh {
             font-size: 18px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-secondary);
             cursor: pointer;
             padding: 8px 16px;
             border-radius: 20px;
             background: rgba(255, 255, 255, 0.05);
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .card-title .refresh:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(62, 236, 172, 0.1);
+            color: var(--primary-color);
             transform: rotate(180deg);
         }
         .chart {
@@ -333,6 +376,7 @@
     </style>
 </head>
 <body>
+    <div id="particles-js"></div>
     <div class="container">
         <section class="hero-section">
             <div class="header">
@@ -374,7 +418,7 @@
                 <div class="card card-large">
                     <div class="card-title">
                         <span>车型销量排行 TOP 10</span>
-                        <span class="refresh" onclick="refreshChart('main-chart')">↻ 刷新</span>
+                        <span class="refresh" onclick="refreshChart('main-chart')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 16H2V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 刷新</span>
                     </div>
                     <div class="chart" id="main-chart"></div>
                 </div>
@@ -382,7 +426,7 @@
                 <div class="card">
                     <div class="card-title">
                         <span>销量类型分布</span>
-                        <span class="refresh" onclick="refreshChart('pie-chart')">↻ 刷新</span>
+                        <span class="refresh" onclick="refreshChart('pie-chart')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 16H2V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 刷新</span>
                     </div>
                     <div class="chart" id="pie-chart"></div>
                 </div>
@@ -390,7 +434,7 @@
                 <div class="card">
                     <div class="card-title">
                         <span>月度销量趋势</span>
-                        <span class="refresh" onclick="refreshChart('trend-chart')">↻ 刷新</span>
+                        <span class="refresh" onclick="refreshChart('trend-chart')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 16H2V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 刷新</span>
                     </div>
                     <div class="chart" id="trend-chart"></div>
                 </div>
@@ -774,31 +818,100 @@
                 trendChart.resize();
             });
 
+            // Apply smooth animations to all charts
+            setTimeout(() => {
+                for (let key in charts) {
+                    if (charts[key]) {
+                        charts[key].dispatchAction({
+                            type: 'highlight',
+                            seriesIndex: 0,
+                            dataIndex: 0
+                        });
+                        setTimeout(() => {
+                            charts[key].dispatchAction({
+                                type: 'downplay',
+                                seriesIndex: 0,
+                                dataIndex: 0
+                            });
+                        }, 1000);
+                    }
+                }
+            }, 2500);
+
             return charts;
         }
 
         // 图表刷新动画
         function refreshChart(chartId) {
-            if (!charts || Object.keys(charts).length === 0) {
-                charts = initCharts();
-            }
+            const refreshButton = document.querySelector(`.refresh[onclick="refreshChart('${chartId}')"]`);
+            refreshButton.style.transition = 'transform 0.5s ease';
+            refreshButton.style.transform = 'rotate(360deg)';
             
-            let targetChart;
-            if (chartId === 'main-chart') {
-                targetChart = charts.mainChart;
-            } else if (chartId === 'pie-chart') {
-                targetChart = charts.pieChart;
-            } else if (chartId === 'trend-chart') {
-                targetChart = charts.trendChart;
-            }
-            
-            if (targetChart) {
-                const option = targetChart.getOption();
-                targetChart.clear();
+            setTimeout(() => {
+                if (charts[chartId]) {
+                    charts[chartId].clear();
+                    switch (chartId) {
+                        case 'main-chart':
+                            charts['mainChart'].setOption({
+                                series: [{
+                                    data: salesData.sales.slice().reverse()
+                                }]
+                            });
+                            break;
+                        case 'pie-chart':
+                            charts['pieChart'].setOption({
+                                series: [{
+                                    data: [
+                                        {
+                                            value: salesData.types['DM-i混动'],
+                                            name: 'DM-i混动',
+                                            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                                {offset: 0, color: '#3eecac'},
+                                                {offset: 1, color: '#3ba272'}
+                                            ])}
+                                        },
+                                        {
+                                            value: salesData.types['EV纯电'],
+                                            name: 'EV纯电',
+                                            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                                {offset: 0, color: '#ee74e1'},
+                                                {offset: 1, color: '#9a60b4'}
+                                            ])}
+                                        },
+                                        {
+                                            value: salesData.types['燃油车'],
+                                            name: '燃油车',
+                                            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                                {offset: 0, color: '#fac858'},
+                                                {offset: 1, color: '#fc8452'}
+                                            ])}
+                                        }
+                                    ]
+                                }]
+                            });
+                            break;
+                        case 'trend-chart':
+                            charts['trendChart'].setOption({
+                                series: [
+                                    {
+                                        data: salesData.monthlyTrend['1月'].slice(0, 5)
+                                    },
+                                    {
+                                        data: salesData.monthlyTrend['2月'].slice(0, 5)
+                                    },
+                                    {
+                                        data: salesData.monthlyTrend['3月'].slice(0, 5)
+                                    }
+                                ]
+                            });
+                            break;
+                    }
+                }
+                
                 setTimeout(() => {
-                    targetChart.setOption(option);
-                }, 100);
-            }
+                    refreshButton.style.transform = 'rotate(0deg)';
+                }, 500);
+            }, 300);
         }
 
         // 监听页面滚动，添加视差效果
@@ -812,6 +925,115 @@
 
         // 初始化所有图表
         document.addEventListener('DOMContentLoaded', initCharts);
+
+        // Particles.js configuration
+        document.addEventListener('DOMContentLoaded', function() {
+            particlesJS('particles-js', {
+                "particles": {
+                    "number": {
+                        "value": 80,
+                        "density": {
+                            "enable": true,
+                            "value_area": 800
+                        }
+                    },
+                    "color": {
+                        "value": "#ffffff"
+                    },
+                    "shape": {
+                        "type": "circle",
+                        "stroke": {
+                            "width": 0,
+                            "color": "#000000"
+                        },
+                        "polygon": {
+                            "nb_sides": 5
+                        }
+                    },
+                    "opacity": {
+                        "value": 0.2,
+                        "random": true,
+                        "anim": {
+                            "enable": true,
+                            "speed": 0.5,
+                            "opacity_min": 0.1,
+                            "sync": false
+                        }
+                    },
+                    "size": {
+                        "value": 3,
+                        "random": true,
+                        "anim": {
+                            "enable": true,
+                            "speed": 2,
+                            "size_min": 0.1,
+                            "sync": false
+                        }
+                    },
+                    "line_linked": {
+                        "enable": true,
+                        "distance": 150,
+                        "color": "#3eecac",
+                        "opacity": 0.1,
+                        "width": 1
+                    },
+                    "move": {
+                        "enable": true,
+                        "speed": 1,
+                        "direction": "none",
+                        "random": true,
+                        "straight": false,
+                        "out_mode": "out",
+                        "bounce": false,
+                        "attract": {
+                            "enable": false,
+                            "rotateX": 600,
+                            "rotateY": 1200
+                        }
+                    }
+                },
+                "interactivity": {
+                    "detect_on": "canvas",
+                    "events": {
+                        "onhover": {
+                            "enable": true,
+                            "mode": "grab"
+                        },
+                        "onclick": {
+                            "enable": true,
+                            "mode": "push"
+                        },
+                        "resize": true
+                    },
+                    "modes": {
+                        "grab": {
+                            "distance": 140,
+                            "line_linked": {
+                                "opacity": 0.4
+                            }
+                        },
+                        "bubble": {
+                            "distance": 400,
+                            "size": 40,
+                            "duration": 2,
+                            "opacity": 8,
+                            "speed": 3
+                        },
+                        "repulse": {
+                            "distance": 200,
+                            "duration": 0.4
+                        },
+                        "push": {
+                            "particles_nb": 4
+                        },
+                        "remove": {
+                            "particles_nb": 2
+                        }
+                    }
+                },
+                "retina_detect": true
+            });
+        });
     </script>
 </body>
 </html> 
