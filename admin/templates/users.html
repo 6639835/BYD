@@ -1,0 +1,267 @@
+{% extends "layout.html" %}
+
+{% block title %}用户管理 - 比亚迪汽车管理系统{% endblock %}
+
+{% block header_title %}<h2>用户管理</h2>{% endblock %}
+
+{% block content %}
+<div class="users-management">
+    <div class="action-bar">
+        <div class="search-box">
+            <input type="text" id="user-search" class="form-control" placeholder="搜索用户...">
+            <i class="fas fa-search"></i>
+        </div>
+        
+        <div class="actions">
+            <button id="add-user-btn" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> 添加用户
+            </button>
+        </div>
+    </div>
+    
+    <div class="data-table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>用户名</th>
+                    <th>角色</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for username, data in users.items() %}
+                <tr>
+                    <td>{{ username }}</td>
+                    <td>
+                        <span class="badge {% if data.role == 'admin' %}badge-primary{% else %}badge-secondary{% endif %}">
+                            {{ data.role }}
+                        </span>
+                    </td>
+                    <td class="actions">
+                        {% if username != session.username %}
+                        <button class="btn btn-sm btn-danger delete-user-btn" data-username="{{ username }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        {% else %}
+                        <span class="current-user-badge">当前用户</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Add User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加新用户</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <div class="form-group">
+                        <label for="username-input">用户名</label>
+                        <input type="text" id="username-input" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password-input">密码</label>
+                        <input type="password" id="password-input" class="form-control" required>
+                        <div class="password-strength">
+                            <div class="strength-meter"></div>
+                            <span class="strength-text">密码强度: 弱</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="role-select">角色</label>
+                        <select id="role-select" class="form-control">
+                            <option value="editor">编辑者</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-outline modal-cancel">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const userSearch = document.getElementById('user-search');
+    const addUserBtn = document.getElementById('add-user-btn');
+    const userModal = document.getElementById('user-modal');
+    const userForm = document.getElementById('user-form');
+    const usernameInput = document.getElementById('username-input');
+    const passwordInput = document.getElementById('password-input');
+    const roleSelect = document.getElementById('role-select');
+    const deleteUserBtns = document.querySelectorAll('.delete-user-btn');
+    
+    // Close modal when clicking close button or cancel
+    document.querySelectorAll('.modal-close, .modal-cancel').forEach(element => {
+        element.addEventListener('click', () => {
+            userModal.style.display = 'none';
+        });
+    });
+    
+    // User search functionality
+    userSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.data-table tbody tr');
+        
+        rows.forEach(row => {
+            const username = row.querySelector('td:first-child').textContent.toLowerCase();
+            const role = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            
+            if (username.includes(searchTerm) || role.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Add User Button
+    addUserBtn.addEventListener('click', function() {
+        // Reset form
+        userForm.reset();
+        usernameInput.focus();
+        
+        // Show modal
+        userModal.style.display = 'block';
+    });
+    
+    // Password strength meter
+    const strengthMeter = document.querySelector('.strength-meter');
+    const strengthText = document.querySelector('.strength-text');
+    
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        
+        // Length check
+        if (password.length >= 8) strength += 25;
+        
+        // Contains lowercase
+        if (/[a-z]/.test(password)) strength += 25;
+        
+        // Contains uppercase
+        if (/[A-Z]/.test(password)) strength += 25;
+        
+        // Contains numbers or special chars
+        if (/[\d\W]/.test(password)) strength += 25;
+        
+        // Update UI
+        strengthMeter.style.width = strength + '%';
+        
+        if (strength < 50) {
+            strengthMeter.style.backgroundColor = '#ff5252';
+            strengthText.textContent = '密码强度: 弱';
+        } else if (strength < 75) {
+            strengthMeter.style.backgroundColor = '#ffb300';
+            strengthText.textContent = '密码强度: 中';
+        } else {
+            strengthMeter.style.backgroundColor = '#00e676';
+            strengthText.textContent = '密码强度: 强';
+        }
+    });
+    
+    // User Form Submit
+    userForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        const role = roleSelect.value;
+        
+        // Validate
+        if (!username || !password) {
+            alert('请填写所有必填字段！');
+            return;
+        }
+        
+        // Submit user data
+        fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                role: role
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                alert('用户添加成功！');
+                window.location.reload(); // Reload page to show new user
+            } else {
+                alert('添加失败: ' + (result.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error adding user:', error);
+            alert('添加用户失败，请查看控制台了解详情');
+        });
+        
+        // Close modal
+        userModal.style.display = 'none';
+    });
+    
+    // Delete User Buttons
+    deleteUserBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const username = this.getAttribute('data-username');
+            
+            if (confirm(`确定要删除用户「${username}」吗？`)) {
+                fetch(`/api/users/${username}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.success) {
+                        alert('用户删除成功！');
+                        window.location.reload(); // Reload page to update user list
+                    } else {
+                        alert('删除失败: ' + (result.error || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting user:', error);
+                    alert('删除用户失败，请查看控制台了解详情');
+                });
+            }
+        });
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === userModal) {
+            userModal.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %} 

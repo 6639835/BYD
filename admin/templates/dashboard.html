@@ -1,0 +1,285 @@
+{% extends "layout.html" %}
+
+{% block title %}管理面板 - 比亚迪汽车管理系统{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>管理面板</h1>
+        <p class="welcome-message">欢迎回来, <span class="username">{{ session.username }}</span></p>
+    </div>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-car"></i>
+            </div>
+            <div class="stat-content">
+                <h3>汽车型号</h3>
+                <p class="stat-value" id="models-count">0</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-content">
+                <h3>季度数据</h3>
+                <p class="stat-value" id="quarters-count">0</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <h3>用户数量</h3>
+                <p class="stat-value" id="users-count">0</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-charts">
+        <div class="chart-card">
+            <h3>销量概览</h3>
+            <div id="sales-overview-chart" class="chart"></div>
+        </div>
+        
+        <div class="chart-card">
+            <h3>车型占比</h3>
+            <div id="models-pie-chart" class="chart"></div>
+        </div>
+    </div>
+    
+    <div class="dashboard-quick-actions">
+        <h3>快速操作</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('sales') }}" class="btn btn-primary">
+                <i class="fas fa-chart-bar"></i>
+                管理销量数据
+            </a>
+            {% if session.role == 'admin' %}
+            <a href="{{ url_for('users') }}" class="btn btn-secondary">
+                <i class="fas fa-user-cog"></i>
+                管理用户
+            </a>
+            {% endif %}
+            <button class="btn btn-accent" id="export-data-btn">
+                <i class="fas fa-file-export"></i>
+                导出数据
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.0/dist/countUp.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch sales data
+    fetch('/api/sales')
+        .then(response => response.json())
+        .then(data => {
+            updateStats(data);
+            renderSalesOverviewChart(data);
+            renderModelsPieChart(data);
+        })
+        .catch(error => console.error('Error fetching data:', error));
+    
+    // Export data button
+    document.getElementById('export-data-btn').addEventListener('click', function() {
+        fetch('/api/sales')
+            .then(response => response.json())
+            .then(data => {
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'byd_sales_data.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            })
+            .catch(error => console.error('Error exporting data:', error));
+    });
+    
+    function updateStats(data) {
+        // Count unique models
+        const uniqueModels = new Set();
+        data.quarterly_sales.forEach(quarter => {
+            quarter.models.forEach(model => {
+                uniqueModels.add(model.name);
+            });
+        });
+        
+        // Update stats with animations
+        new CountUp('models-count', 0, uniqueModels.size, 0, 2.5, {
+            useEasing: true,
+            useGrouping: true
+        }).start();
+        
+        new CountUp('quarters-count', 0, data.quarterly_sales.length, 0, 2.5, {
+            useEasing: true,
+            useGrouping: true
+        }).start();
+        
+        // Fetch users count only for admin
+        const isAdmin = "{{ session.role }}" === "admin";
+        if (isAdmin) {
+            fetch('/api/users')
+                .then(response => response.json())
+                .then(users => {
+                    new CountUp('users-count', 0, Object.keys(users).length, 0, 2.5, {
+                        useEasing: true,
+                        useGrouping: true
+                    }).start();
+                })
+                .catch(error => {
+                    console.error('Error fetching users:', error);
+                    document.getElementById('users-count').textContent = 'N/A';
+                });
+        } else {
+            document.getElementById('users-count').textContent = 'N/A';
+        }
+    }
+    
+    function renderSalesOverviewChart(data) {
+        const salesChart = echarts.init(document.getElementById('sales-overview-chart'));
+        
+        // Prepare data for the chart
+        const quarters = data.quarterly_sales.map(q => q.quarter);
+        const models = [...new Set(data.quarterly_sales.flatMap(q => q.models.map(m => m.name)))];
+        
+        const series = models.map(model => {
+            return {
+                name: model,
+                type: 'bar',
+                data: data.quarterly_sales.map(q => {
+                    const modelData = q.models.find(m => m.name === model);
+                    return modelData ? modelData.sales : 0;
+                })
+            };
+        });
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {
+                data: models,
+                textStyle: {
+                    color: 'rgba(255, 255, 255, 0.8)'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: quarters,
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.3)'
+                    }
+                },
+                axisLabel: {
+                    color: 'rgba(255, 255, 255, 0.8)'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.3)'
+                    }
+                },
+                axisLabel: {
+                    color: 'rgba(255, 255, 255, 0.8)'
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            },
+            series: series
+        };
+        
+        salesChart.setOption(option);
+        window.addEventListener('resize', () => salesChart.resize());
+    }
+    
+    function renderModelsPieChart(data) {
+        const pieChart = echarts.init(document.getElementById('models-pie-chart'));
+        
+        // Use the latest quarter data
+        const latestQuarter = data.quarterly_sales[data.quarterly_sales.length - 1];
+        const pieData = latestQuarter.models.map(model => ({
+            name: model.name,
+            value: model.sales
+        }));
+        
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                right: 10,
+                top: 'center',
+                data: pieData.map(item => item.name),
+                textStyle: {
+                    color: 'rgba(255, 255, 255, 0.8)'
+                }
+            },
+            series: [
+                {
+                    name: '车型销量',
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: 'rgba(0, 0, 0, 0.1)',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold',
+                            color: 'rgba(255, 255, 255, 0.8)'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: pieData
+                }
+            ]
+        };
+        
+        pieChart.setOption(option);
+        window.addEventListener('resize', () => pieChart.resize());
+    }
+});
+</script>
+{% endblock %} 

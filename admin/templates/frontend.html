@@ -1,0 +1,192 @@
+{% extends "layout.html" %}
+
+{% block title %}前台页面预览 - 比亚迪汽车管理系统{% endblock %}
+
+{% block header_title %}<h2>前台页面预览</h2>{% endblock %}
+
+{% block styles %}
+<style>
+    .iframe-container {
+        width: 100%;
+        height: calc(100vh - var(--header-height) - 60px);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+        background: var(--card-bg);
+        position: relative;
+    }
+    
+    .iframe-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
+    .iframe-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: var(--card-bg-light);
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .iframe-toolbar .device-selector {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .iframe-toolbar .device-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 5px;
+        border-radius: 4px;
+        transition: var(--transition-ease);
+    }
+    
+    .iframe-toolbar .device-btn:hover,
+    .iframe-toolbar .device-btn.active {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .iframe-toolbar .device-btn.active {
+        color: var(--primary-color);
+    }
+    
+    .iframe-toolbar .refresh-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: var(--transition-ease);
+    }
+    
+    .iframe-toolbar .refresh-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .iframe-wrapper {
+        width: 100%;
+        height: calc(100% - 50px);
+        overflow: auto;
+        transition: var(--transition-ease);
+    }
+    
+    .iframe-wrapper.mobile {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+    }
+    
+    .iframe-wrapper.mobile iframe {
+        width: 380px;
+        height: 100%;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 10px solid #000;
+    }
+    
+    .iframe-wrapper.tablet {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+    }
+    
+    .iframe-wrapper.tablet iframe {
+        width: 768px;
+        height: 100%;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 10px solid #000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="iframe-container">
+    <div class="iframe-toolbar">
+        <div class="device-selector">
+            <button class="device-btn active" data-device="desktop">
+                <i class="fas fa-desktop"></i>
+                <span>桌面</span>
+            </button>
+            <button class="device-btn" data-device="tablet">
+                <i class="fas fa-tablet-alt"></i>
+                <span>平板</span>
+            </button>
+            <button class="device-btn" data-device="mobile">
+                <i class="fas fa-mobile-alt"></i>
+                <span>手机</span>
+            </button>
+        </div>
+        
+        <button class="refresh-btn" id="refresh-iframe">
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+        </button>
+    </div>
+    
+    <div class="iframe-wrapper desktop">
+        <iframe src="{{ url_for('frontend_assets', filename='index.html') }}" id="frontend-iframe" title="比亚迪汽车前台页面"></iframe>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deviceButtons = document.querySelectorAll('.device-btn');
+    const iframeWrapper = document.querySelector('.iframe-wrapper');
+    const refreshButton = document.getElementById('refresh-iframe');
+    const frontendIframe = document.getElementById('frontend-iframe');
+    
+    // Switch between device views
+    deviceButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            deviceButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to this button
+            this.classList.add('active');
+            
+            // Get device type
+            const device = this.getAttribute('data-device');
+            
+            // Remove all device classes from wrapper
+            iframeWrapper.classList.remove('desktop', 'tablet', 'mobile');
+            
+            // Add the selected device class
+            iframeWrapper.classList.add(device);
+        });
+    });
+    
+    // Refresh iframe
+    refreshButton.addEventListener('click', function() {
+        // Add spinning animation to refresh icon
+        const icon = this.querySelector('i');
+        icon.classList.add('fa-spin');
+        
+        // Reload iframe
+        frontendIframe.src = frontendIframe.src;
+        
+        // Remove spinning animation after reload
+        frontendIframe.addEventListener('load', function() {
+            icon.classList.remove('fa-spin');
+        }, { once: true });
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,398 @@
+{% extends "layout.html" %}
+
+{% block title %}销量数据管理 - 比亚迪汽车管理系统{% endblock %}
+
+{% block header_title %}<h2>销量数据管理</h2>{% endblock %}
+
+{% block content %}
+<div class="sales-management">
+    <div class="action-bar">
+        <div class="filters">
+            <select id="quarter-filter" class="form-control">
+                <option value="">选择季度...</option>
+                <!-- Will be populated by JavaScript -->
+            </select>
+        </div>
+        
+        <div class="actions">
+            <button id="add-quarter-btn" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加新季度
+            </button>
+            {% if session.role == 'admin' %}
+            <button id="save-data-btn" class="btn btn-success">
+                <i class="fas fa-save"></i> 保存更改
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="data-table-container">
+        <table id="sales-table" class="data-table">
+            <thead>
+                <tr>
+                    <th>车型名称</th>
+                    <th>销量</th>
+                    <th>同比增长 (%)</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Add/Edit Quarter Modal -->
+    <div id="quarter-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">添加新季度</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="quarter-form">
+                    <div class="form-group">
+                        <label for="quarter-name">季度名称</label>
+                        <input type="text" id="quarter-name" class="form-control" required placeholder="例如: 2024Q2">
+                    </div>
+                    
+                    <div id="models-container">
+                        <!-- Template for model entry -->
+                        <div class="model-entry template">
+                            <div class="form-group">
+                                <label>车型名称</label>
+                                <input type="text" class="form-control model-name" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>销量</label>
+                                    <input type="number" class="form-control model-sales" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>同比增长 (%)</label>
+                                    <input type="number" class="form-control model-change" step="0.1">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-danger remove-model-btn">删除</button>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="add-model-btn" class="btn btn-secondary">
+                        <i class="fas fa-plus"></i> 添加车型
+                    </button>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-outline modal-cancel">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const quarterFilter = document.getElementById('quarter-filter');
+    const salesTable = document.getElementById('sales-table').querySelector('tbody');
+    const addQuarterBtn = document.getElementById('add-quarter-btn');
+    const saveDataBtn = document.getElementById('save-data-btn');
+    const quarterModal = document.getElementById('quarter-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const quarterForm = document.getElementById('quarter-form');
+    const quarterNameInput = document.getElementById('quarter-name');
+    const modelsContainer = document.getElementById('models-container');
+    const addModelBtn = document.getElementById('add-model-btn');
+    
+    // Close modal when clicking close button or cancel
+    document.querySelectorAll('.modal-close, .modal-cancel').forEach(element => {
+        element.addEventListener('click', () => {
+            quarterModal.style.display = 'none';
+        });
+    });
+    
+    // Data storage
+    let salesData = null;
+    let currentQuarter = null;
+    
+    // Fetch sales data
+    fetchSalesData();
+    
+    function fetchSalesData() {
+        fetch('/api/sales')
+            .then(response => response.json())
+            .then(data => {
+                salesData = data;
+                populateQuarterFilter();
+                
+                // Select the latest quarter by default
+                if (salesData.quarterly_sales.length > 0) {
+                    const latestQuarter = salesData.quarterly_sales[salesData.quarterly_sales.length - 1].quarter;
+                    quarterFilter.value = latestQuarter;
+                    showQuarterData(latestQuarter);
+                }
+            })
+            .catch(error => console.error('Error fetching sales data:', error));
+    }
+    
+    function populateQuarterFilter() {
+        // Clear existing options except the placeholder
+        while (quarterFilter.options.length > 1) {
+            quarterFilter.options.remove(1);
+        }
+        
+        // Add quarter options
+        salesData.quarterly_sales.forEach(quarter => {
+            const option = document.createElement('option');
+            option.value = quarter.quarter;
+            option.textContent = quarter.quarter;
+            quarterFilter.appendChild(option);
+        });
+    }
+    
+    // Event listener for quarter filter
+    quarterFilter.addEventListener('change', function() {
+        const selectedQuarter = this.value;
+        if (selectedQuarter) {
+            showQuarterData(selectedQuarter);
+        } else {
+            // Clear the table if no quarter is selected
+            salesTable.innerHTML = '';
+        }
+    });
+    
+    function showQuarterData(quarterName) {
+        currentQuarter = quarterName;
+        
+        // Find the quarter data
+        const quarterData = salesData.quarterly_sales.find(q => q.quarter === quarterName);
+        if (!quarterData) return;
+        
+        // Clear existing rows
+        salesTable.innerHTML = '';
+        
+        // Populate table with models
+        quarterData.models.forEach(model => {
+            const row = document.createElement('tr');
+            
+            // Model name cell
+            const nameCell = document.createElement('td');
+            nameCell.textContent = model.name;
+            row.appendChild(nameCell);
+            
+            // Sales cell
+            const salesCell = document.createElement('td');
+            salesCell.textContent = model.sales.toLocaleString();
+            row.appendChild(salesCell);
+            
+            // Change cell
+            const changeCell = document.createElement('td');
+            const changeValue = model.change !== undefined ? model.change : 0;
+            changeCell.textContent = changeValue + '%';
+            changeCell.className = changeValue >= 0 ? 'positive-change' : 'negative-change';
+            row.appendChild(changeCell);
+            
+            // Actions cell
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'actions';
+            
+            // Edit button
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-sm btn-primary edit-model-btn';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+            editBtn.addEventListener('click', () => editModel(model));
+            actionsCell.appendChild(editBtn);
+            
+            // Delete button (admin only)
+            if ("{{ session.role }}" === "admin") {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-sm btn-danger delete-model-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.addEventListener('click', () => deleteModel(model));
+                actionsCell.appendChild(deleteBtn);
+            }
+            
+            row.appendChild(actionsCell);
+            salesTable.appendChild(row);
+        });
+    }
+    
+    // Add Quarter Button
+    addQuarterBtn.addEventListener('click', function() {
+        modalTitle.textContent = '添加新季度';
+        quarterNameInput.value = '';
+        
+        // Clear models container except the template
+        const templateModel = modelsContainer.querySelector('.model-entry.template');
+        modelsContainer.innerHTML = '';
+        modelsContainer.appendChild(templateModel);
+        
+        // Add first model entry
+        addModelEntry();
+        
+        // Show modal
+        quarterModal.style.display = 'block';
+    });
+    
+    // Save Data Button
+    if (saveDataBtn) {
+        saveDataBtn.addEventListener('click', function() {
+            // Save all changes to the server
+            fetch('/api/sales', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(salesData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('数据保存成功！');
+                } else {
+                    alert('保存失败: ' + (result.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving data:', error);
+                alert('保存失败，请查看控制台了解详情');
+            });
+        });
+    }
+    
+    // Quarter Form Submit
+    quarterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const quarterName = quarterNameInput.value.trim();
+        const models = [];
+        
+        // Collect model data
+        modelsContainer.querySelectorAll('.model-entry:not(.template)').forEach(entry => {
+            const nameInput = entry.querySelector('.model-name');
+            const salesInput = entry.querySelector('.model-sales');
+            const changeInput = entry.querySelector('.model-change');
+            
+            if (nameInput.value.trim() && salesInput.value.trim()) {
+                models.push({
+                    name: nameInput.value.trim(),
+                    sales: parseInt(salesInput.value),
+                    change: changeInput.value ? parseFloat(changeInput.value) : 0
+                });
+            }
+        });
+        
+        // Check if we have at least one model
+        if (models.length === 0) {
+            alert('请至少添加一个车型！');
+            return;
+        }
+        
+        // Add or update quarter
+        const existingQuarterIndex = salesData.quarterly_sales.findIndex(q => q.quarter === quarterName);
+        
+        if (existingQuarterIndex >= 0) {
+            // Update existing quarter
+            salesData.quarterly_sales[existingQuarterIndex].models = models;
+        } else {
+            // Add new quarter
+            salesData.quarterly_sales.push({
+                quarter: quarterName,
+                models: models
+            });
+        }
+        
+        // Update UI
+        populateQuarterFilter();
+        quarterFilter.value = quarterName;
+        showQuarterData(quarterName);
+        
+        // Close modal
+        quarterModal.style.display = 'none';
+    });
+    
+    // Add Model Entry
+    addModelBtn.addEventListener('click', addModelEntry);
+    
+    function addModelEntry(modelData = null) {
+        // Clone the template
+        const template = modelsContainer.querySelector('.model-entry.template');
+        const newEntry = template.cloneNode(true);
+        newEntry.classList.remove('template');
+        
+        // Fill with data if provided
+        if (modelData) {
+            newEntry.querySelector('.model-name').value = modelData.name;
+            newEntry.querySelector('.model-sales').value = modelData.sales;
+            newEntry.querySelector('.model-change').value = modelData.change !== undefined ? modelData.change : 0;
+        }
+        
+        // Add remove button functionality
+        newEntry.querySelector('.remove-model-btn').addEventListener('click', function() {
+            // Don't remove if it's the last model
+            if (modelsContainer.querySelectorAll('.model-entry:not(.template)').length > 1) {
+                newEntry.remove();
+            } else {
+                alert('至少需要一个车型！');
+            }
+        });
+        
+        // Add to container
+        modelsContainer.appendChild(newEntry);
+    }
+    
+    // Edit Model
+    function editModel(model) {
+        // Find the current quarter data
+        const quarterData = salesData.quarterly_sales.find(q => q.quarter === currentQuarter);
+        if (!quarterData) return;
+        
+        modalTitle.textContent = '编辑车型数据';
+        quarterNameInput.value = currentQuarter;
+        
+        // Clear models container except the template
+        const templateModel = modelsContainer.querySelector('.model-entry.template');
+        modelsContainer.innerHTML = '';
+        modelsContainer.appendChild(templateModel);
+        
+        // Add all models from this quarter
+        quarterData.models.forEach(m => {
+            addModelEntry(m);
+        });
+        
+        // Show modal
+        quarterModal.style.display = 'block';
+    }
+    
+    // Delete Model
+    function deleteModel(model) {
+        if (!confirm(`确定要删除「${model.name}」吗？`)) {
+            return;
+        }
+        
+        // Find the current quarter data
+        const quarterData = salesData.quarterly_sales.find(q => q.quarter === currentQuarter);
+        if (!quarterData) return;
+        
+        // Remove the model
+        const modelIndex = quarterData.models.findIndex(m => m.name === model.name);
+        if (modelIndex >= 0) {
+            quarterData.models.splice(modelIndex, 1);
+            
+            // Update UI
+            showQuarterData(currentQuarter);
+        }
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === quarterModal) {
+            quarterModal.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %} 
