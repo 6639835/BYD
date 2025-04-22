@@ -1,0 +1,379 @@
+{% extends "layout.html" %}
+
+{% block title %}活动日志 - 比亚迪汽车管理系统{% endblock %}
+
+{% block header_title %}<h2>活动日志</h2>{% endblock %}
+
+{% block styles %}
+<style>
+    .log-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+    }
+    
+    .log-filters .form-group {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .log-table-container {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        overflow: auto;
+        max-height: 70vh;
+    }
+    
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .log-table th,
+    .log-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .log-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .log-action {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .log-action-login { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+    .log-action-logout { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
+    .log-action-add_user { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+    .log-action-update_user { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+    .log-action-delete_user { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+    .log-action-update_sales { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+    .log-action-add_quarter { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
+    .log-action-update_account { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
+    
+    .log-details-toggle {
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        cursor: pointer;
+        padding: 0;
+        font-size: 1rem;
+    }
+    
+    .log-details {
+        display: none;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+    }
+    
+    .log-details.visible {
+        display: block;
+    }
+    
+    .log-export {
+        margin-bottom: 1rem;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="logs-management">
+    <div class="action-bar">
+        <div class="log-export">
+            <button id="export-logs-btn" class="btn btn-outline">
+                <i class="fas fa-file-export"></i> 导出日志
+            </button>
+        </div>
+        
+        <div class="log-filters">
+            <div class="form-group">
+                <label for="username-filter">用户名</label>
+                <input type="text" id="username-filter" class="form-control" placeholder="筛选用户名...">
+            </div>
+            
+            <div class="form-group">
+                <label for="action-filter">操作类型</label>
+                <select id="action-filter" class="form-control">
+                    <option value="">全部</option>
+                    <option value="login">登录</option>
+                    <option value="logout">登出</option>
+                    <option value="add_user">添加用户</option>
+                    <option value="update_user">更新用户</option>
+                    <option value="delete_user">删除用户</option>
+                    <option value="update_sales">更新销量</option>
+                    <option value="add_quarter">添加季度</option>
+                    <option value="update_account">更新账户</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="date-from">开始日期</label>
+                <input type="date" id="date-from" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="date-to">结束日期</label>
+                <input type="date" id="date-to" class="form-control">
+            </div>
+            
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button id="apply-filters" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> 应用过滤
+                </button>
+                <button id="reset-filters" class="btn btn-outline" style="margin-left: 0.5rem;">
+                    <i class="fas fa-undo"></i> 重置
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="log-table-container">
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>用户</th>
+                    <th>操作</th>
+                    <th>IP地址</th>
+                    <th>详情</th>
+                </tr>
+            </thead>
+            <tbody id="logs-tbody">
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.username }}</td>
+                    <td>
+                        <span class="log-action log-action-{{ log.action }}">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td>{{ log.ip_address }}</td>
+                    <td>
+                        {% if log.details %}
+                        <button class="log-details-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="log-details">{{ log.details|tojson }}</div>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="no-results" style="display: none; text-align: center; padding: 2rem;">
+        <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+        <p>没有找到匹配的日志记录</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const usernameFilter = document.getElementById('username-filter');
+    const actionFilter = document.getElementById('action-filter');
+    const dateFrom = document.getElementById('date-from');
+    const dateTo = document.getElementById('date-to');
+    const applyFiltersBtn = document.getElementById('apply-filters');
+    const resetFiltersBtn = document.getElementById('reset-filters');
+    const exportLogsBtn = document.getElementById('export-logs-btn');
+    const logsTbody = document.getElementById('logs-tbody');
+    const noResults = document.getElementById('no-results');
+    
+    // Toggle log details
+    document.querySelectorAll('.log-details-toggle').forEach(button => {
+        button.addEventListener('click', function() {
+            const details = this.nextElementSibling;
+            const icon = this.querySelector('i');
+            
+            details.classList.toggle('visible');
+            
+            if (details.classList.contains('visible')) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        });
+    });
+    
+    // Apply filters
+    applyFiltersBtn.addEventListener('click', function() {
+        fetchLogs();
+    });
+    
+    // Reset filters
+    resetFiltersBtn.addEventListener('click', function() {
+        usernameFilter.value = '';
+        actionFilter.value = '';
+        dateFrom.value = '';
+        dateTo.value = '';
+        fetchLogs();
+    });
+    
+    // Export logs
+    exportLogsBtn.addEventListener('click', function() {
+        // Get current filters
+        const username = usernameFilter.value.trim();
+        const action = actionFilter.value;
+        const startDate = dateFrom.value;
+        const endDate = dateTo.value;
+        
+        // Create query params
+        let queryParams = new URLSearchParams();
+        if (username) queryParams.append('username', username);
+        if (action) queryParams.append('action', action);
+        if (startDate) queryParams.append('start_date', `${startDate}T00:00:00`);
+        if (endDate) queryParams.append('end_date', `${endDate}T23:59:59`);
+        
+        // Fetch logs data
+        fetch(`/api/activity-logs?${queryParams.toString()}&limit=1000`)
+            .then(response => response.json())
+            .then(logs => {
+                // Convert to CSV
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                // Add headers
+                csvContent += "Timestamp,Username,Action,IP,Details\n";
+                
+                // Add data rows
+                logs.forEach(log => {
+                    let details = log.details ? JSON.stringify(log.details).replace(/,/g, ' ') : '';
+                    csvContent += `${log.timestamp},${log.username},${log.action},${log.ip_address},"${details}"\n`;
+                });
+                
+                // Create download link
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `activity-logs-${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                
+                // Trigger download
+                link.click();
+                
+                // Cleanup
+                document.body.removeChild(link);
+            })
+            .catch(error => {
+                console.error('Error exporting logs:', error);
+                alert('导出日志失败，请查看控制台了解详情');
+            });
+    });
+    
+    // Fetch logs based on filters
+    function fetchLogs() {
+        // Get filter values
+        const username = usernameFilter.value.trim();
+        const action = actionFilter.value;
+        const startDate = dateFrom.value;
+        const endDate = dateTo.value;
+        
+        // Create query params
+        let queryParams = new URLSearchParams();
+        if (username) queryParams.append('username', username);
+        if (action) queryParams.append('action', action);
+        if (startDate) queryParams.append('start_date', `${startDate}T00:00:00`);
+        if (endDate) queryParams.append('end_date', `${endDate}T23:59:59`);
+        queryParams.append('limit', '100'); // Limit to 100 logs
+        
+        // Show loading state
+        logsTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">加载中...</td></tr>';
+        
+        // Fetch filtered logs
+        fetch(`/api/activity-logs?${queryParams.toString()}`)
+            .then(response => response.json())
+            .then(logs => {
+                if (logs.length === 0) {
+                    // No results
+                    logsTbody.innerHTML = '';
+                    noResults.style.display = 'block';
+                } else {
+                    // Render logs
+                    noResults.style.display = 'none';
+                    renderLogs(logs);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching logs:', error);
+                logsTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">加载失败，请重试</td></tr>';
+            });
+    }
+    
+    // Render logs
+    function renderLogs(logs) {
+        logsTbody.innerHTML = '';
+        
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            
+            // Format timestamp
+            const timestamp = new Date(log.timestamp);
+            const formattedDate = timestamp.toLocaleString('zh-CN');
+            
+            row.innerHTML = `
+                <td>${formattedDate}</td>
+                <td>${log.username}</td>
+                <td>
+                    <span class="log-action log-action-${log.action}">
+                        ${log.action}
+                    </span>
+                </td>
+                <td>${log.ip_address}</td>
+                <td>
+                    ${log.details ?
+                    `<button class="log-details-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="log-details">${JSON.stringify(log.details, null, 2)}</div>` :
+                    '-'}
+                </td>
+            `;
+            
+            logsTbody.appendChild(row);
+        });
+        
+        // Attach event listeners to new buttons
+        document.querySelectorAll('.log-details-toggle').forEach(button => {
+            button.addEventListener('click', function() {
+                const details = this.nextElementSibling;
+                const icon = this.querySelector('i');
+                
+                details.classList.toggle('visible');
+                
+                if (details.classList.contains('visible')) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                } else {
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

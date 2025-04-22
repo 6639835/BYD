@@ -1,192 +1,248 @@
 {% extends "layout.html" %}
 
-{% block title %}前台页面预览 - 比亚迪汽车管理系统{% endblock %}
+{% block title %}前台预览 - 比亚迪汽车管理系统{% endblock %}
 
-{% block header_title %}<h2>前台页面预览</h2>{% endblock %}
+{% block header_title %}<h2>前台预览</h2>{% endblock %}
 
 {% block styles %}
 <style>
-    .iframe-container {
-        width: 100%;
-        height: calc(100vh - var(--header-height) - 60px);
-        border-radius: 12px;
+    .preview-container {
+        max-width: 100%;
         overflow: hidden;
-        box-shadow: var(--card-shadow);
-        border: 1px solid var(--border-color);
-        background: var(--card-bg);
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.3);
+    }
+    
+    .preview-toolbar {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 0, 0, 0.4);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .preview-controls {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+    }
+    
+    .preview-control {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .preview-control.red { background-color: #ff5f57; }
+    .preview-control.yellow { background-color: #febc2e; }
+    .preview-control.green { background-color: #28c840; }
+    
+    .preview-url {
+        flex-grow: 1;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        user-select: all;
+    }
+    
+    .preview-actions {
+        display: flex;
+        align-items: center;
+        margin-left: 1rem;
+    }
+    
+    .preview-action {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-left: 0.5rem;
+        transition: color 0.2s;
+    }
+    
+    .preview-action:hover {
+        color: var(--text-primary);
+    }
+    
+    .preview-frame-container {
         position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        overflow: hidden;
     }
     
-    .iframe-container iframe {
+    .preview-frame {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         border: none;
     }
     
-    .iframe-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 20px;
-        background: var(--card-bg-light);
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .iframe-toolbar .device-selector {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .iframe-toolbar .device-btn {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 16px;
-        padding: 5px;
-        border-radius: 4px;
-        transition: var(--transition-ease);
-    }
-    
-    .iframe-toolbar .device-btn:hover,
-    .iframe-toolbar .device-btn.active {
-        color: var(--text-primary);
-        background: rgba(255, 255, 255, 0.05);
-    }
-    
-    .iframe-toolbar .device-btn.active {
-        color: var(--primary-color);
-    }
-    
-    .iframe-toolbar .refresh-btn {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        cursor: pointer;
-        padding: 5px 10px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        transition: var(--transition-ease);
-    }
-    
-    .iframe-toolbar .refresh-btn:hover {
-        color: var(--text-primary);
-        background: rgba(255, 255, 255, 0.05);
-    }
-    
-    .iframe-wrapper {
-        width: 100%;
-        height: calc(100% - 50px);
-        overflow: auto;
-        transition: var(--transition-ease);
-    }
-    
-    .iframe-wrapper.mobile {
+    .device-selector {
         display: flex;
         justify-content: center;
-        align-items: flex-start;
-        padding: 20px;
+        margin-bottom: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 0.75rem;
+        border-radius: 8px;
     }
     
-    .iframe-wrapper.mobile iframe {
-        width: 380px;
-        height: 100%;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        border: 10px solid #000;
-    }
-    
-    .iframe-wrapper.tablet {
+    .device-option {
         display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding: 20px;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 1rem;
+        opacity: 0.6;
+        cursor: pointer;
+        transition: opacity 0.2s;
     }
     
-    .iframe-wrapper.tablet iframe {
-        width: 768px;
-        height: 100%;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        border: 10px solid #000;
+    .device-option:hover {
+        opacity: 0.8;
     }
+    
+    .device-option.active {
+        opacity: 1;
+    }
+    
+    .device-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .device-label {
+        font-size: 0.8rem;
+    }
+    
+    /* Device frame sizes */
+    .preview-frame-container.desktop { padding-bottom: 56.25%; }
+    .preview-frame-container.tablet { padding-bottom: 75%; max-width: 768px; margin: 0 auto; }
+    .preview-frame-container.mobile { padding-bottom: 177.78%; max-width: 375px; margin: 0 auto; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="iframe-container">
-    <div class="iframe-toolbar">
-        <div class="device-selector">
-            <button class="device-btn active" data-device="desktop">
-                <i class="fas fa-desktop"></i>
-                <span>桌面</span>
+<div class="device-selector">
+    <div class="device-option active" data-device="desktop">
+        <div class="device-icon"><i class="fas fa-desktop"></i></div>
+        <div class="device-label">桌面设备</div>
+    </div>
+    <div class="device-option" data-device="tablet">
+        <div class="device-icon"><i class="fas fa-tablet-alt"></i></div>
+        <div class="device-label">平板设备</div>
+    </div>
+    <div class="device-option" data-device="mobile">
+        <div class="device-icon"><i class="fas fa-mobile-alt"></i></div>
+        <div class="device-label">移动设备</div>
+    </div>
+</div>
+
+<div class="preview-container">
+    <div class="preview-toolbar">
+        <div class="preview-controls">
+            <span class="preview-control red"></span>
+            <span class="preview-control yellow"></span>
+            <span class="preview-control green"></span>
+        </div>
+        <div class="preview-url" id="preview-url">http://localhost:5000/</div>
+        <div class="preview-actions">
+            <button class="preview-action" id="refresh-preview" title="刷新">
+                <i class="fas fa-sync-alt"></i>
             </button>
-            <button class="device-btn" data-device="tablet">
-                <i class="fas fa-tablet-alt"></i>
-                <span>平板</span>
-            </button>
-            <button class="device-btn" data-device="mobile">
-                <i class="fas fa-mobile-alt"></i>
-                <span>手机</span>
+            <button class="preview-action" id="open-new-tab" title="在新标签页中打开">
+                <i class="fas fa-external-link-alt"></i>
             </button>
         </div>
-        
-        <button class="refresh-btn" id="refresh-iframe">
-            <i class="fas fa-sync-alt"></i>
-            <span>刷新</span>
-        </button>
     </div>
-    
-    <div class="iframe-wrapper desktop">
-        <iframe src="{{ url_for('frontend_assets', filename='index.html') }}" id="frontend-iframe" title="比亚迪汽车前台页面"></iframe>
+    <div class="preview-frame-container desktop" id="preview-container">
+        <iframe src="/" class="preview-frame" id="preview-frame"></iframe>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">前台功能说明</h3>
+    </div>
+    <div class="card-body">
+        <p>此页面展示了前台销量排行榜页面，您可以通过以下方式查看和测试前台功能：</p>
+        
+        <ul class="mb-4">
+            <li>使用上方设备选择器查看在不同设备上的显示效果</li>
+            <li>在页面中交互，测试各种功能和动画效果</li>
+            <li>可以使用刷新按钮重新加载前台页面</li>
+            <li>点击外部链接按钮在新标签页中打开前台页面</li>
+        </ul>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <span>前台页面内容会根据您在管理后台中更新的销量数据自动更新。如需查看最新数据，请先保存销量更改，然后刷新前台预览。</span>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deviceButtons = document.querySelectorAll('.device-btn');
-    const iframeWrapper = document.querySelector('.iframe-wrapper');
-    const refreshButton = document.getElementById('refresh-iframe');
-    const frontendIframe = document.getElementById('frontend-iframe');
-    
-    // Switch between device views
-    deviceButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            deviceButtons.forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to this button
-            this.classList.add('active');
-            
-            // Get device type
-            const device = this.getAttribute('data-device');
-            
-            // Remove all device classes from wrapper
-            iframeWrapper.classList.remove('desktop', 'tablet', 'mobile');
-            
-            // Add the selected device class
-            iframeWrapper.classList.add(device);
+    document.addEventListener('DOMContentLoaded', function() {
+        const deviceOptions = document.querySelectorAll('.device-option');
+        const previewContainer = document.getElementById('preview-container');
+        const previewFrame = document.getElementById('preview-frame');
+        const previewUrl = document.getElementById('preview-url');
+        const refreshBtn = document.getElementById('refresh-preview');
+        const openNewTabBtn = document.getElementById('open-new-tab');
+        
+        // 切换设备视图
+        deviceOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                // 移除所有激活状态
+                deviceOptions.forEach(opt => opt.classList.remove('active'));
+                
+                // 激活当前选项
+                this.classList.add('active');
+                
+                // 更改容器类
+                const device = this.getAttribute('data-device');
+                previewContainer.className = `preview-frame-container ${device}`;
+                
+                // 更新预览URL以反映设备类型
+                updatePreviewUrl(device);
+            });
         });
-    });
-    
-    // Refresh iframe
-    refreshButton.addEventListener('click', function() {
-        // Add spinning animation to refresh icon
-        const icon = this.querySelector('i');
-        icon.classList.add('fa-spin');
         
-        // Reload iframe
-        frontendIframe.src = frontendIframe.src;
+        // 更新预览URL显示
+        function updatePreviewUrl(device) {
+            const baseUrl = window.location.origin;
+            
+            // 构建URL表示设备类型查询参数
+            const displayUrl = `${baseUrl}/?device=${device}`;
+            previewUrl.textContent = displayUrl;
+            
+            // 实际上我们不改变iframe的src，只是为了UI显示
+        }
         
-        // Remove spinning animation after reload
-        frontendIframe.addEventListener('load', function() {
-            icon.classList.remove('fa-spin');
-        }, { once: true });
+        // 刷新预览
+        refreshBtn.addEventListener('click', function() {
+            previewFrame.src = previewFrame.src;
+        });
+        
+        // 在新标签页打开
+        openNewTabBtn.addEventListener('click', function() {
+            window.open(previewUrl.textContent, '_blank');
+        });
+        
+        // 初始化URL显示
+        updatePreviewUrl('desktop');
     });
-});
 </script>
 {% endblock %} 

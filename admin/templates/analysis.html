@@ -1,0 +1,249 @@
+{% extends "layout.html" %}
+
+{% block title %}数据分析 - 比亚迪汽车管理系统{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analysis.css') }}">
+{% endblock %}
+
+{% block header_title %}<h2>销量数据分析</h2>{% endblock %}
+
+{% block content %}
+<!-- 分析选项卡片 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-filter"></i> 分析选项
+        </h3>
+        <div class="card-actions">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-options">
+                <i class="fas fa-chevron-down"></i> 收起选项
+            </button>
+        </div>
+    </div>
+    <div class="card-body" id="analysis-options-body">
+        <form id="analysis-form" class="analysis-controls">
+            <div class="form-group">
+                <label for="analysis-type">分析类型</label>
+                <select id="analysis-type" class="form-control">
+                    <option value="model_comparison">车型销量比较</option>
+                    <option value="quarterly_growth">季度增长分析</option>
+                    <option value="market_share">市场份额分析</option>
+                </select>
+                <small class="form-text text-muted">选择要执行的分析类型</small>
+            </div>
+            
+            <div class="form-group" id="models-select-group">
+                <label>选择车型</label>
+                <div class="model-checkboxes">
+                    {% set all_models = [] %}
+                    {% for quarter in sales_data.quarterly_sales %}
+                        {% for model in quarter.models %}
+                            {% if model.name not in all_models %}
+                                {% set _ = all_models.append(model.name) %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                    
+                    {% for model_name in all_models|sort %}
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="model-{{ loop.index }}" name="models" value="{{ model_name }}" class="model-checkbox">
+                        <label for="model-{{ loop.index }}">{{ model_name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="checkbox-actions">
+                    <button type="button" id="select-all-models" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-check-double"></i> 全选
+                    </button>
+                    <button type="button" id="deselect-all-models" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i> 取消全选
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group" id="quarters-select-group">
+                <label>选择季度</label>
+                <div class="quarter-checkboxes">
+                    {% for quarter in sales_data.quarterly_sales|sort(attribute='quarter') %}
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="quarter-{{ loop.index }}" name="quarters" value="{{ quarter.quarter }}" class="quarter-checkbox">
+                        <label for="quarter-{{ loop.index }}">{{ quarter.quarter }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="checkbox-actions">
+                    <button type="button" id="select-all-quarters" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-check-double"></i> 全选
+                    </button>
+                    <button type="button" id="deselect-all-quarters" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i> 取消全选
+                    </button>
+                    <button type="button" id="select-recent-quarters" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-calendar-alt"></i> 最近4个季度
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-chart-bar"></i> 生成分析
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 分析结果区域 -->
+<div id="analysis-results" style="display: none;">
+    <!-- 车型销量比较卡片 -->
+    <div class="card mb-4" id="comparison-chart-card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-chart-bar"></i> 车型销量比较
+            </h3>
+            <div class="card-actions">
+                <button class="btn btn-sm btn-outline-secondary" id="toggle-chart-type">
+                    <i class="fas fa-exchange-alt"></i> 切换图表类型
+                </button>
+                <button class="btn btn-sm btn-outline-primary" id="download-chart">
+                    <i class="fas fa-download"></i> 下载图表
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="chart-container" style="position: relative; height: 400px;">
+                <canvas id="comparison-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 季度增长分析卡片 -->
+    <div class="card mb-4" id="growth-chart-card" style="display: none;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-chart-line"></i> 季度增长分析
+            </h3>
+            <div class="card-actions">
+                <button class="btn btn-sm btn-outline-primary" id="download-growth-chart">
+                    <i class="fas fa-download"></i> 下载数据
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="growth-tabs">
+                <div class="growth-tab-buttons"></div>
+                <div class="growth-tab-content"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 市场份额分析卡片 -->
+    <div class="card mb-4" id="share-chart-card" style="display: none;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-chart-pie"></i> 市场份额分析
+            </h3>
+            <div class="card-actions">
+                <div class="share-quarter-selector">
+                    <select id="share-quarter-select" class="form-control">
+                        {% for quarter in sales_data.quarterly_sales|sort(attribute='quarter') %}
+                        <option value="{{ quarter.quarter }}">{{ quarter.quarter }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" id="download-share-chart">
+                    <i class="fas fa-download"></i> 下载图表
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="chart-container" style="position: relative; height: 350px;">
+                        <canvas id="share-pie-chart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="share-data-table-container">
+                        <table class="table table-striped" id="share-data-table">
+                            <thead>
+                                <tr>
+                                    <th>车型</th>
+                                    <th>销量</th>
+                                    <th>市场份额</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 数据表格卡片 -->
+    <div class="card mb-4" id="data-table-card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-table"></i> 数据表格
+            </h3>
+            <div class="card-actions">
+                <button class="btn btn-sm btn-outline-primary" id="export-data">
+                    <i class="fas fa-file-excel"></i> 导出数据
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped" id="analysis-data-table">
+                    <thead id="analysis-table-head"></thead>
+                    <tbody id="analysis-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 初始加载指示器 -->
+<div id="loading-indicator" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">加载中...</span>
+    </div>
+    <div class="loading-text">正在加载数据...</div>
+</div>
+
+<!-- 空结果提示 -->
+<div id="no-data-message" style="display: none;">
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <h3>暂无分析数据</h3>
+        <p>请选择至少一个车型和一个季度进行分析</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+<script>
+    // 选项面板切换
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleOptionsBtn = document.getElementById('toggle-options');
+        const optionsBody = document.getElementById('analysis-options-body');
+        
+        toggleOptionsBtn.addEventListener('click', function() {
+            if (optionsBody.style.display === 'none') {
+                optionsBody.style.display = 'block';
+                this.innerHTML = '<i class="fas fa-chevron-down"></i> 收起选项';
+            } else {
+                optionsBody.style.display = 'none';
+                this.innerHTML = '<i class="fas fa-chevron-right"></i> 展开选项';
+            }
+        });
+    });
+</script>
+{% endblock %} 

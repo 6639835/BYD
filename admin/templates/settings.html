@@ -1,0 +1,1093 @@
+{% extends "layout.html" %}
+
+{% block title %}系统设置 - 比亚迪汽车管理系统{% endblock %}
+
+{% block header_title %}<h2>系统设置</h2>{% endblock %}
+
+{% block styles %}
+<style>
+    .settings-container {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+        gap: 1.5rem;
+    }
+    
+    .settings-nav {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .settings-nav-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+    
+    .settings-nav-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .settings-nav-item {
+        padding: 0;
+        margin-bottom: 0.25rem;
+    }
+    
+    .settings-nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .settings-nav-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .settings-nav-link.active {
+        background: var(--primary-color);
+        color: #fff;
+    }
+    
+    .settings-nav-link i {
+        margin-right: 0.75rem;
+        font-size: 1rem;
+        width: 20px;
+        text-align: center;
+    }
+    
+    .settings-content {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    
+    .settings-section {
+        display: none;
+    }
+    
+    .settings-section.active {
+        display: block;
+    }
+    
+    .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .settings-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .settings-description {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-top: 0.25rem;
+    }
+    
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-card {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    
+    .settings-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .settings-card-description {
+        font-size: 0.85rem;
+        opacity: 0.7;
+        margin-bottom: 1rem;
+    }
+    
+    .role-card {
+        position: relative;
+        padding-right: 3rem;
+    }
+    
+    .role-edit-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    
+    .role-permissions {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .role-permission-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .role-permission-item i {
+        color: #2ecc71;
+        margin-right: 0.5rem;
+    }
+    
+    .role-permission-item.disabled i {
+        color: #e74c3c;
+    }
+    
+    .success-message {
+        display: none;
+        padding: 1rem;
+        background: rgba(46, 204, 113, 0.2);
+        color: #2ecc71;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        align-items: center;
+    }
+    
+    .success-message i {
+        margin-right: 0.5rem;
+    }
+    
+    .settings-form-section {
+        margin-bottom: 2rem;
+    }
+    
+    .settings-divider {
+        margin: 2rem 0;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    
+    .toggle-wrapper {
+        display: flex;
+        align-items: center;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        margin-right: 0.75rem;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.2);
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--primary-color);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+    
+    /* Media queries */
+    @media (max-width: 768px) {
+        .settings-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* 备份相关样式 */
+    .backup-list {
+        margin-top: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .backup-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .backup-table th, 
+    .backup-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .backup-table th {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .backup-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .backup-table tr:hover td {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .backup-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .empty-state {
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .empty-state-icon {
+        font-size: 2.5rem;
+        color: var(--text-tertiary);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state-text {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+    
+    .loader {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: text-bottom;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .system-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .system-info-card {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    
+    .system-info-title {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        color: var(--text-tertiary);
+    }
+    
+    .system-info-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
+    .settings-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .settings-table th,
+    .settings-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .settings-table th {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        background: rgba(0, 0, 0, 0.2);
+        width: 30%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-nav">
+        <div class="settings-nav-title">设置菜单</div>
+        <ul class="settings-nav-list">
+            <li class="settings-nav-item">
+                <a href="#system" class="settings-nav-link active" data-section="system">
+                    <i class="fas fa-server"></i>
+                    系统信息
+                </a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#backup" class="settings-nav-link" data-section="backup">
+                    <i class="fas fa-database"></i>
+                    数据备份
+                </a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#roles" class="settings-nav-link" data-section="roles">
+                    <i class="fas fa-user-shield"></i>
+                    角色与权限
+                </a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#appearance" class="settings-nav-link" data-section="appearance">
+                    <i class="fas fa-palette"></i>
+                    外观设置
+                </a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#notifications" class="settings-nav-link" data-section="notifications">
+                    <i class="fas fa-bell"></i>
+                    通知设置
+                </a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#advanced" class="settings-nav-link" data-section="advanced">
+                    <i class="fas fa-cogs"></i>
+                    高级设置
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="settings-content">
+        <div id="success-message" class="success-message">
+            <i class="fas fa-check-circle"></i>
+            <span>设置已成功保存!</span>
+        </div>
+        
+        <!-- General Settings Section -->
+        <div id="system-section" class="settings-section active">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">系统信息</h3>
+                    <div class="settings-description">查看系统当前状态和基本信息</div>
+                </div>
+            </div>
+            
+            <div class="system-info-grid">
+                <div class="system-info-card">
+                    <div class="system-info-title">系统版本</div>
+                    <div class="system-info-value">{{ system_info.version }}</div>
+                </div>
+                <div class="system-info-card">
+                    <div class="system-info-title">Flask版本</div>
+                    <div class="system-info-value">{{ system_info.flask_version }}</div>
+                </div>
+                <div class="system-info-card">
+                    <div class="system-info-title">Python版本</div>
+                    <div class="system-info-value">{{ system_info.python_version }}</div>
+                </div>
+                <div class="system-info-card">
+                    <div class="system-info-title">操作系统</div>
+                    <div class="system-info-value">{{ system_info.os }}</div>
+                </div>
+                <div class="system-info-card">
+                    <div class="system-info-title">数据库类型</div>
+                    <div class="system-info-value">{{ system_info.database_type }}</div>
+                </div>
+                <div class="system-info-card">
+                    <div class="system-info-title">最近备份时间</div>
+                    <div class="system-info-value">{{ system_info.last_backup }}</div>
+                </div>
+            </div>
+            
+            <div class="settings-form-section">
+                <h4>系统健康状态</h4>
+                <table class="settings-table">
+                    <tr>
+                        <th>应用状态</th>
+                        <td><span class="badge badge-success">运行中</span></td>
+                    </tr>
+                    <tr>
+                        <th>数据存储状态</th>
+                        <td><span class="badge badge-success">正常</span></td>
+                    </tr>
+                    <tr>
+                        <th>最近系统启动时间</th>
+                        <td>{{ system_info.last_backup }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Backup & Restore Section -->
+        <div id="backup-section" class="settings-section">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">数据备份与恢复</h3>
+                    <div class="settings-description">备份和恢复系统数据</div>
+                </div>
+                <button class="btn btn-primary" id="create-backup-btn">
+                    <i class="fas fa-plus"></i> 创建备份
+                </button>
+            </div>
+            
+            <div class="success-message" id="backup-success">
+                <i class="fas fa-check-circle"></i>
+                <span id="backup-success-message">操作成功</span>
+            </div>
+            
+            <div class="backup-list">
+                {% if backups %}
+                <table class="backup-table">
+                    <thead>
+                        <tr>
+                            <th>备份文件</th>
+                            <th>创建时间</th>
+                            <th>大小</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backup-table-body">
+                        {% for backup in backups %}
+                        <tr id="backup-row-{{ backup.filename }}">
+                            <td>{{ backup.filename }}</td>
+                            <td>{{ backup.date }}</td>
+                            <td>{{ backup.size }}</td>
+                            <td>
+                                <div class="backup-actions">
+                                    <button class="btn btn-sm btn-success restore-backup" data-filename="{{ backup.filename }}">
+                                        <i class="fas fa-undo-alt"></i> 恢复
+                                    </button>
+                                    <a href="{{ url_for('download_backup', filename=backup.filename) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download"></i> 下载
+                                    </a>
+                                    <button class="btn btn-sm btn-danger delete-backup" data-filename="{{ backup.filename }}">
+                                        <i class="fas fa-trash"></i> 删除
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state" id="no-backups">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <p class="empty-state-text">暂无备份数据</p>
+                    <button class="btn btn-primary" id="create-backup-empty">
+                        <i class="fas fa-plus"></i> 创建首个备份
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="settings-form-section mt-4">
+                <h4>备份设置</h4>
+                <div class="form-group mb-3">
+                    <label for="auto-backup">自动备份</label>
+                    <div class="toggle-wrapper">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-backup">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span>启用自动备份</span>
+                    </div>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="backup-frequency">备份频率</label>
+                    <select class="form-control" id="backup-frequency">
+                        <option value="daily">每天</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="backup-retention">保留备份数量</label>
+                    <input type="number" class="form-control" id="backup-retention" value="10" min="1" max="30">
+                    <div class="form-help">设置系统自动保留的备份数量，超过此数量的旧备份将被自动删除</div>
+                </div>
+                
+                <button class="btn btn-primary mt-3" id="save-backup-settings">保存设置</button>
+            </div>
+        </div>
+        
+        <!-- Roles Management Section -->
+        <div id="roles-section" class="settings-section">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">角色与权限</h3>
+                    <div class="settings-description">管理系统角色和权限设置</div>
+                </div>
+            </div>
+            
+            <div class="settings-grid">
+                {% for role_id, role in roles.items() %}
+                <div class="settings-card role-card">
+                    <button class="role-edit-btn">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <h4 class="settings-card-title">{{ role.name }}</h4>
+                    <p class="settings-card-description">{{ role.description }}</p>
+                    
+                    <ul class="role-permissions">
+                        <li class="role-permission-item{% if 'manage_users' not in role.permissions %} disabled{% endif %}">
+                            <i class="fas fa-{% if 'manage_users' in role.permissions %}check{% else %}times{% endif %}"></i>
+                            用户管理
+                        </li>
+                        <li class="role-permission-item{% if 'edit_sales' not in role.permissions %} disabled{% endif %}">
+                            <i class="fas fa-{% if 'edit_sales' in role.permissions %}check{% else %}times{% endif %}"></i>
+                            编辑销售数据
+                        </li>
+                        <li class="role-permission-item{% if 'view_logs' not in role.permissions %} disabled{% endif %}">
+                            <i class="fas fa-{% if 'view_logs' in role.permissions %}check{% else %}times{% endif %}"></i>
+                            查看日志
+                        </li>
+                        <li class="role-permission-item{% if 'system_settings' not in role.permissions %} disabled{% endif %}">
+                            <i class="fas fa-{% if 'system_settings' in role.permissions %}check{% else %}times{% endif %}"></i>
+                            系统设置
+                        </li>
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Appearance Settings Section -->
+        <div id="appearance-section" class="settings-section">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">外观设置</h3>
+                    <div class="settings-description">定制系统界面外观</div>
+                </div>
+                <button class="btn btn-primary btn-sm" id="save-appearance">
+                    <i class="fas fa-save"></i> 保存设置
+                </button>
+            </div>
+            
+            <form id="appearance-form">
+                <div class="settings-form-section">
+                    <h4>主题设置</h4>
+                    
+                    <div class="form-group">
+                        <label for="primary-color">主题色</label>
+                        <input type="color" id="primary-color" class="form-control" value="#3498db">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="font-size">字体大小</label>
+                        <select id="font-size" class="form-control">
+                            <option value="small">小</option>
+                            <option value="medium" selected>中</option>
+                            <option value="large">大</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sidebar-style">侧边栏样式</label>
+                        <select id="sidebar-style" class="form-control">
+                            <option value="dark" selected>深色</option>
+                            <option value="light">浅色</option>
+                            <option value="transparent">透明</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-divider"></div>
+                
+                <div class="settings-form-section">
+                    <h4>布局设置</h4>
+                    
+                    <div class="form-group">
+                        <div class="toggle-wrapper">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="compact-layout">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <label for="compact-layout">使用紧凑布局</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="toggle-wrapper">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show-animations" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <label for="show-animations">显示界面动画</label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Notifications Section -->
+        <div id="notifications-section" class="settings-section">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">通知设置</h3>
+                    <div class="settings-description">配置系统通知选项</div>
+                </div>
+            </div>
+            
+            <div class="settings-form-section">
+                <h4>数据备份</h4>
+                <p>创建系统数据的备份文件，包括用户、销量数据和活动日志</p>
+                
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="backup-all-btn">
+                        <i class="fas fa-download"></i> 备份所有数据
+                    </button>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-outline dropdown-toggle" type="button" id="backup-options">
+                            选择性备份 <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="#" id="backup-users">用户数据</a>
+                            <a class="dropdown-item" href="#" id="backup-sales">销量数据</a>
+                            <a class="dropdown-item" href="#" id="backup-logs">活动日志</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-divider"></div>
+            
+            <div class="settings-form-section">
+                <h4>数据恢复</h4>
+                <p>从备份文件恢复系统数据，请谨慎操作，恢复将覆盖当前数据</p>
+                
+                <div class="form-group">
+                    <label for="restore-file">选择备份文件</label>
+                    <input type="file" id="restore-file" class="form-control">
+                </div>
+                
+                <div class="form-actions">
+                    <button class="btn btn-danger" id="restore-btn" disabled>
+                        <i class="fas fa-upload"></i> 恢复数据
+                    </button>
+                </div>
+            </div>
+            
+            <div class="settings-divider"></div>
+            
+            <div class="settings-form-section">
+                <h4>自动备份设置</h4>
+                
+                <div class="form-group">
+                    <div class="toggle-wrapper">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-backup">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <label for="auto-backup">启用自动备份</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="backup-frequency">备份频率</label>
+                    <select id="backup-frequency" class="form-control">
+                        <option value="daily">每日</option>
+                        <option value="weekly" selected>每周</option>
+                        <option value="monthly">每月</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="backup-retention">保留备份数量</label>
+                    <input type="number" id="backup-retention" class="form-control" value="10" min="1" max="100">
+                    <small>系统将保留最近的备份文件数量</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="save-backup-settings">
+                        <i class="fas fa-save"></i> 保存备份设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Edit Modal -->
+<div id="role-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>编辑角色</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="role-form">
+                <input type="hidden" id="role-key">
+                
+                <div class="form-group">
+                    <label for="role-name">角色名称</label>
+                    <input type="text" id="role-name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role-description">角色描述</label>
+                    <textarea id="role-description" class="form-control" rows="2"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>权限设置</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="perm-manage-users">
+                            <label for="perm-manage-users">用户管理</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="perm-edit-sales">
+                            <label for="perm-edit-sales">编辑销量</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="perm-view-logs">
+                            <label for="perm-view-logs">查看日志</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="perm-system-settings">
+                            <label for="perm-system-settings">系统设置</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-outline modal-cancel">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements - Navigation
+    const navLinks = document.querySelectorAll('.settings-nav-link');
+    const sections = document.querySelectorAll('.settings-section');
+    
+    // DOM Elements - General Settings
+    const generalForm = document.getElementById('general-form');
+    const saveGeneralBtn = document.getElementById('save-general');
+    
+    // DOM Elements - Security Settings
+    const securityForm = document.getElementById('security-form');
+    const saveSecurityBtn = document.getElementById('save-security');
+    
+    // DOM Elements - Appearance Settings
+    const appearanceForm = document.getElementById('appearance-form');
+    const saveAppearanceBtn = document.getElementById('save-appearance');
+    
+    // DOM Elements - Roles Management
+    const roleEditBtns = document.querySelectorAll('.role-edit-btn');
+    const addRoleBtn = document.getElementById('add-role-btn');
+    const roleModal = document.getElementById('role-modal');
+    const roleForm = document.getElementById('role-form');
+    const roleKey = document.getElementById('role-key');
+    const roleName = document.getElementById('role-name');
+    const roleDescription = document.getElementById('role-description');
+    const permManageUsers = document.getElementById('perm-manage-users');
+    const permEditSales = document.getElementById('perm-edit-sales');
+    const permViewLogs = document.getElementById('perm-view-logs');
+    const permSystemSettings = document.getElementById('perm-system-settings');
+    
+    // DOM Elements - Backup
+    const backupAllBtn = document.getElementById('backup-all-btn');
+    const backupUsersBtn = document.getElementById('backup-users');
+    const backupSalesBtn = document.getElementById('backup-sales');
+    const backupLogsBtn = document.getElementById('backup-logs');
+    const restoreFileInput = document.getElementById('restore-file');
+    const restoreBtn = document.getElementById('restore-btn');
+    const saveBackupSettingsBtn = document.getElementById('save-backup-settings');
+    
+    // Success Message
+    const successMessage = document.getElementById('success-message');
+    
+    // Show success message
+    function showSuccess() {
+        successMessage.style.display = 'flex';
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Navigation
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active link
+            navLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show corresponding section
+            const sectionId = this.getAttribute('data-section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(`${sectionId}-section`).classList.add('active');
+        });
+    });
+    
+    // General Settings
+    saveGeneralBtn.addEventListener('click', function() {
+        // In a real app, you would send the form data to the server
+        // For now, we'll just show the success message
+        showSuccess();
+    });
+    
+    // Security Settings
+    saveSecurityBtn.addEventListener('click', function() {
+        // In a real app, you would send the form data to the server
+        showSuccess();
+    });
+    
+    // Appearance Settings
+    saveAppearanceBtn.addEventListener('click', function() {
+        // Preview theme changes (in a real app, you'd save these to the server)
+        const primaryColor = document.getElementById('primary-color').value;
+        document.documentElement.style.setProperty('--primary-color', primaryColor);
+        
+        showSuccess();
+    });
+    
+    // Role Management
+    roleEditBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const role = this.getAttribute('data-role');
+            
+            // In a real app, you would fetch the role data from the server
+            // For now, we'll use dummy data based on the roles passed from the server
+            const roleData = {
+                admin: {
+                    name: "管理员",
+                    description: "拥有系统的所有操作权限",
+                    permissions: ["manage_users", "edit_sales", "view_logs", "system_settings"]
+                },
+                editor: {
+                    name: "编辑者",
+                    description: "可以编辑销售数据",
+                    permissions: ["edit_sales"]
+                },
+                viewer: {
+                    name: "访问者",
+                    description: "只能查看数据，不能修改",
+                    permissions: []
+                }
+            };
+            
+            // Populate form
+            roleKey.value = role;
+            roleName.value = roleData[role].name;
+            roleDescription.value = roleData[role].description;
+            
+            // Set permissions
+            permManageUsers.checked = roleData[role].permissions.includes("manage_users");
+            permEditSales.checked = roleData[role].permissions.includes("edit_sales");
+            permViewLogs.checked = roleData[role].permissions.includes("view_logs");
+            permSystemSettings.checked = roleData[role].permissions.includes("system_settings");
+            
+            // Show modal
+            roleModal.style.display = 'block';
+        });
+    });
+    
+    // Add Role Button
+    addRoleBtn.addEventListener('click', function() {
+        // Reset form
+        roleForm.reset();
+        roleKey.value = '';
+        
+        // Show modal
+        roleModal.style.display = 'block';
+    });
+    
+    // Close modal when clicking close button or cancel
+    document.querySelectorAll('.modal-close, .modal-cancel').forEach(element => {
+        element.addEventListener('click', () => {
+            roleModal.style.display = 'none';
+        });
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === roleModal) {
+            roleModal.style.display = 'none';
+        }
+    });
+    
+    // Role Form Submit
+    roleForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const data = {
+            key: roleKey.value,
+            name: roleName.value,
+            description: roleDescription.value,
+            permissions: []
+        };
+        
+        // Get permissions
+        if (permManageUsers.checked) data.permissions.push("manage_users");
+        if (permEditSales.checked) data.permissions.push("edit_sales");
+        if (permViewLogs.checked) data.permissions.push("view_logs");
+        if (permSystemSettings.checked) data.permissions.push("system_settings");
+        
+        // In a real app, you would send the data to the server
+        console.log("Role data:", data);
+        
+        // Close modal
+        roleModal.style.display = 'none';
+        
+        // Show success message
+        showSuccess();
+        
+        // In a real app, you would reload the roles after saving
+        // For now, we'll just reload the page after a delay
+        setTimeout(() => {
+            // window.location.reload();
+        }, 1000);
+    });
+    
+    // Backup All
+    backupAllBtn.addEventListener('click', function() {
+        // In a real app, you would send a request to backup all data
+        // For this demo, we'll simulate a download
+        simulateDownload('byd-backup-all-' + new Date().toISOString().split('T')[0] + '.json');
+    });
+    
+    // Backup Users
+    backupUsersBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        simulateDownload('byd-backup-users-' + new Date().toISOString().split('T')[0] + '.json');
+    });
+    
+    // Backup Sales
+    backupSalesBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        simulateDownload('byd-backup-sales-' + new Date().toISOString().split('T')[0] + '.json');
+    });
+    
+    // Backup Logs
+    backupLogsBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        simulateDownload('byd-backup-logs-' + new Date().toISOString().split('T')[0] + '.json');
+    });
+    
+    // Restore File Input Change
+    restoreFileInput.addEventListener('change', function() {
+        restoreBtn.disabled = !this.files.length;
+    });
+    
+    // Restore Button
+    restoreBtn.addEventListener('click', function() {
+        if (confirm('确定要从所选文件恢复数据吗？此操作将覆盖当前数据且不可撤销。')) {
+            // In a real app, you would upload the file and restore the data
+            showSuccess();
+        }
+    });
+    
+    // Save Backup Settings
+    saveBackupSettingsBtn.addEventListener('click', function() {
+        // In a real app, you would save the backup settings
+        showSuccess();
+    });
+    
+    // Helper to simulate file download
+    function simulateDownload(filename) {
+        // Create a dummy JSON with timestamp
+        const dummyData = {
+            timestamp: new Date().toISOString(),
+            type: filename.includes('all') ? 'full' : filename.includes('users') ? 'users' : filename.includes('sales') ? 'sales' : 'logs',
+            data: { sample: "This is a sample backup file" }
+        };
+        
+        // Convert to JSON string
+        const dataStr = JSON.stringify(dummyData, null, 2);
+        
+        // Create a download link
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        // Show success message
+        showSuccess();
+    }
+});
+</script>
+{% endblock %} 

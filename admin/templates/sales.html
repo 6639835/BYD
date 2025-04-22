@@ -1,398 +1,851 @@
-{% extends "layout.html" %}
+{% extends 'layout.html' %}
 
-{% block title %}销量数据管理 - 比亚迪汽车管理系统{% endblock %}
+{% block title %}销售数据管理{% endblock %}
 
-{% block header_title %}<h2>销量数据管理</h2>{% endblock %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sales.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .sales-container {
+            padding: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            position: relative;
+            padding-bottom: 0.5rem;
+            margin: 0;
+        }
+        
+        .page-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #1e88e5, #42a5f5);
+            border-radius: 2px;
+        }
+        
+        /* Stats cards */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stats-card {
+            background: #2c3e50;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid transparent;
+            overflow: hidden;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        
+        .stats-card.sales { border-left-color: #4caf50; }
+        .stats-card.growth { border-left-color: #ff9800; }
+        .stats-card.model { border-left-color: #2196f3; }
+        .stats-card.avg { border-left-color: #9c27b0; }
+        
+        .stats-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .stats-card-icon.sales { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .stats-card-icon.growth { background-color: rgba(255, 152, 0, 0.2); color: #ff9800; }
+        .stats-card-icon.model { background-color: rgba(33, 150, 243, 0.2); color: #2196f3; }
+        .stats-card-icon.avg { background-color: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+        
+        .stats-card-title {
+            font-size: 0.9rem;
+            color: #b0bec5;
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .stats-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: #ecf0f1;
+        }
+        
+        .stats-card-trend {
+            font-size: 0.85rem;
+            color: #b0bec5;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .stats-card-trend i.fa-arrow-up { color: #4caf50; }
+        .stats-card-trend i.fa-arrow-down { color: #f44336; }
+        
+        /* Action bar */
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #2c3e50;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #78909c;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #34495e;
+            background-color: #34495e;
+            color: #ecf0f1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .search-input::placeholder {
+            color: #b0bec5;
+        }
+        
+        .search-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            outline: none;
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        
+        .dropdown {
+            position: relative;
+            user-select: none;
+        }
+        
+        .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: #34495e;
+            border: 1px solid #34495e;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #ecf0f1;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .dropdown-toggle:hover {
+            background: #3d566e;
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            min-width: 180px;
+            padding: 0.5rem 0;
+            margin-top: 0.25rem;
+            background: #34495e;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        
+        .dropdown-menu.show {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        .dropdown-item {
+            display: block;
+            padding: 0.6rem 1rem;
+            color: #ecf0f1;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+        
+        .dropdown-item:hover {
+            background: #3d566e;
+        }
+        
+        .dropdown-item.active {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+            font-weight: 500;
+        }
+        
+        /* Table */
+        .data-table-container {
+            background: #2c3e50;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            margin-bottom: 1.5rem;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #34495e;
+            color: #ecf0f1;
+        }
+        
+        .data-table th {
+            background: #243342;
+            font-weight: 600;
+            color: #b0bec5;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .data-table tbody tr {
+            transition: background 0.2s;
+        }
+        
+        .data-table tbody tr:hover {
+            background: #34495e;
+        }
+        
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            background: #34495e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: #b0bec5;
+            font-size: 2rem;
+        }
+        
+        .empty-state-text {
+            font-size: 1.1rem;
+            color: #b0bec5;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Pagination */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #2c3e50;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .pagination-info {
+            color: #b0bec5;
+            font-size: 0.9rem;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .page-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #34495e;
+            border-radius: 8px;
+            background: #34495e;
+            color: #ecf0f1;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .page-btn:hover {
+            background: #3d566e;
+        }
+        
+        .page-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .page-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Modal improvements */
+        .modal {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-content {
+            background: #2c3e50;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            max-width: 650px;
+            width: 100%;
+        }
+        
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ecf0f1;
+            margin: 0;
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: #34495e;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.5rem;
+            color: #b0bec5;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: #3d566e;
+            color: #ecf0f1;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+            max-height: 70vh;
+            overflow-y: auto;
+            color: #ecf0f1;
+        }
+        
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #34495e;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #b0bec5;
+        }
+        
+        .form-control, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #34495e;
+            background-color: #34495e;
+            color: #ecf0f1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .form-control::placeholder {
+            color: #b0bec5;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            outline: none;
+        }
+        
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b0bec5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 16px;
+            padding-right: 2.5rem;
+        }
+        
+        /* Model entries */
+        .model-entry {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: #34495e;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+        
+        .remove-model-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(231, 76, 60, 0.2);
+            border: none;
+            border-radius: 50%;
+            color: #e74c3c;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .remove-model-btn:hover {
+            background: rgba(231, 76, 60, 0.3);
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #34495e;
+            color: #ecf0f1;
+            border: 1px solid #425c77;
+        }
+        
+        .btn-secondary:hover {
+            background: #3d566e;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Toast styles */
+        .toast {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            margin-bottom: 1rem;
+            animation: toastIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .toast-success {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 4px solid #4caf50;
+            color: #4caf50;
+        }
+        
+        .toast-error {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+            color: #e74c3c;
+        }
+        
+        .toast-warning {
+            background: rgba(241, 196, 15, 0.2);
+            border-left: 4px solid #f1c40f;
+            color: #f1c40f;
+        }
+        
+        .toast-info {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 4px solid #3498db;
+            color: #3498db;
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .stats-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .action-buttons {
+                justify-content: space-between;
+            }
+            
+            .model-entry {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
 
 {% block content %}
-<div class="sales-management">
-    <div class="action-bar">
-        <div class="filters">
-            <select id="quarter-filter" class="form-control">
-                <option value="">选择季度...</option>
-                <!-- Will be populated by JavaScript -->
-            </select>
+<div class="sales-container">
+    <div class="page-header">
+        <h1 class="page-title">销售数据管理</h1>
+        <button class="btn btn-primary" id="addSalesBtn">
+            <i class="fas fa-plus"></i> 添加销售数据
+        </button>
+    </div>
+
+    <!-- 统计卡片区域 -->
+    <div class="stats-cards">
+        <div class="stats-card sales">
+            <div class="stats-card-icon sales">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h3 class="stats-card-title">总销量</h3>
+            <div class="stats-card-value" id="totalSales">0</div>
+            <div class="stats-card-trend" id="salesTrend">
+                <i class="fas fa-arrow-up"></i> <span>0%</span>
+            </div>
         </div>
         
-        <div class="actions">
-            <button id="add-quarter-btn" class="btn btn-primary">
-                <i class="fas fa-plus"></i> 添加新季度
-            </button>
-            {% if session.role == 'admin' %}
-            <button id="save-data-btn" class="btn btn-success">
-                <i class="fas fa-save"></i> 保存更改
-            </button>
-            {% endif %}
+        <div class="stats-card growth">
+            <div class="stats-card-icon growth">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <h3 class="stats-card-title">同比增长</h3>
+            <div class="stats-card-value" id="qoqGrowth">0%</div>
+            <div class="stats-card-trend" id="growthTrend">
+                <span>较上季度</span>
+            </div>
+        </div>
+        
+        <div class="stats-card model">
+            <div class="stats-card-icon model">
+                <i class="fas fa-car"></i>
+            </div>
+            <h3 class="stats-card-title">最畅销车型</h3>
+            <div class="stats-card-value" id="topModel">-</div>
+            <div class="stats-card-trend" id="modelTrend">
+                <span>销量</span> <span id="topModelSales">0</span>
+            </div>
+        </div>
+        
+        <div class="stats-card avg">
+            <div class="stats-card-icon avg">
+                <i class="fas fa-calculator"></i>
+            </div>
+            <h3 class="stats-card-title">平均单车型销量</h3>
+            <div class="stats-card-value" id="avgSales">0</div>
+            <div class="stats-card-trend" id="avgTrend">
+                <span>所有车型</span>
+            </div>
         </div>
     </div>
     
+    <!-- 操作栏 -->
+    <div class="action-bar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" class="search-input" id="searchInput" placeholder="搜索车型或地区...">
+        </div>
+        
+        <div class="action-buttons">
+            <div class="dropdown" id="quarterDropdown">
+                <button class="dropdown-toggle">
+                    <span>季度: 全部</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item active" data-value="all">全部</a>
+                    <a class="dropdown-item" data-value="Q1">Q1</a>
+                    <a class="dropdown-item" data-value="Q2">Q2</a>
+                    <a class="dropdown-item" data-value="Q3">Q3</a>
+                    <a class="dropdown-item" data-value="Q4">Q4</a>
+                </div>
+            </div>
+            
+            <div class="dropdown" id="regionDropdown">
+                <button class="dropdown-toggle">
+                    <span>地区: 全部</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item active" data-value="all">全部</a>
+                    <a class="dropdown-item" data-value="华北">华北</a>
+                    <a class="dropdown-item" data-value="华东">华东</a>
+                    <a class="dropdown-item" data-value="华南">华南</a>
+                    <a class="dropdown-item" data-value="华中">华中</a>
+                    <a class="dropdown-item" data-value="西北">西北</a>
+                    <a class="dropdown-item" data-value="西南">西南</a>
+                    <a class="dropdown-item" data-value="东北">东北</a>
+                </div>
+            </div>
+            
+            <div class="dropdown" id="exportDropdown">
+                <button class="dropdown-toggle">
+                    <span>导出</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-menu export-menu">
+                    <a class="dropdown-item" data-format="excel">Excel</a>
+                    <a class="dropdown-item" data-format="csv">CSV</a>
+                    <a class="dropdown-item" data-format="pdf">PDF</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 数据表格 -->
     <div class="data-table-container">
-        <table id="sales-table" class="data-table">
+        <table class="data-table" id="salesTable">
             <thead>
                 <tr>
-                    <th>车型名称</th>
+                    <th>季度</th>
+                    <th>地区</th>
+                    <th>车型</th>
                     <th>销量</th>
-                    <th>同比增长 (%)</th>
+                    <th>同比增长</th>
                     <th>操作</th>
                 </tr>
             </thead>
-            <tbody>
-                <!-- Will be populated by JavaScript -->
-            </tbody>
+            <tbody id="salesTableBody"></tbody>
         </table>
+        
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="empty-state-text">没有找到匹配的销售数据</div>
+            <button class="btn btn-primary" id="resetFiltersBtn">
+                <i class="fas fa-sync-alt"></i> 重置筛选条件
+            </button>
+        </div>
     </div>
     
-    <!-- Add/Edit Quarter Modal -->
-    <div id="quarter-modal" class="modal">
+    <!-- 分页 -->
+    <div class="pagination-container">
+        <div class="pagination-info" id="paginationInfo">
+            显示 0 到 0 条，共 0 条
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+    </div>
+    
+    <!-- 添加/编辑销售数据模态框 -->
+    <div class="modal" id="salesModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-title">添加新季度</h3>
-                <button class="modal-close">&times;</button>
+                <h3 class="modal-title" id="modalTitle">添加销售数据</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="quarter-form">
+                <form id="salesForm">
+                    <input type="hidden" id="salesId">
+                    
                     <div class="form-group">
-                        <label for="quarter-name">季度名称</label>
-                        <input type="text" id="quarter-name" class="form-control" required placeholder="例如: 2024Q2">
+                        <label class="form-label" for="quarter">季度</label>
+                        <select class="form-select" id="quarter" required>
+                            <option value="">请选择季度</option>
+                            <option value="Q1">Q1</option>
+                            <option value="Q2">Q2</option>
+                            <option value="Q3">Q3</option>
+                            <option value="Q4">Q4</option>
+                        </select>
                     </div>
                     
-                    <div id="models-container">
-                        <!-- Template for model entry -->
-                        <div class="model-entry template">
-                            <div class="form-group">
-                                <label>车型名称</label>
-                                <input type="text" class="form-control model-name" required>
-                            </div>
-                            <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="region">地区</label>
+                        <select class="form-select" id="region" required>
+                            <option value="">请选择地区</option>
+                            <option value="华北">华北</option>
+                            <option value="华东">华东</option>
+                            <option value="华南">华南</option>
+                            <option value="华中">华中</option>
+                            <option value="西北">西北</option>
+                            <option value="西南">西南</option>
+                            <option value="东北">东北</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">车型及销量</label>
+                        <div id="modelEntries">
+                            <div class="model-entry">
                                 <div class="form-group">
-                                    <label>销量</label>
-                                    <input type="number" class="form-control model-sales" required min="0">
+                                    <input type="text" class="form-control model-name" placeholder="车型" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>同比增长 (%)</label>
-                                    <input type="number" class="form-control model-change" step="0.1">
+                                    <input type="number" class="form-control model-sales" placeholder="销量" min="0" required>
                                 </div>
+                                <div class="form-group">
+                                    <input type="number" class="form-control model-growth" placeholder="同比增长率 (%)" step="0.01" required>
+                                </div>
+                                <button type="button" class="remove-model-btn">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-danger remove-model-btn">删除</button>
                         </div>
+                        
+                        <button type="button" class="btn btn-secondary" id="addModelEntryBtn">
+                            <i class="fas fa-plus"></i> 添加车型
+                        </button>
                     </div>
                     
-                    <button type="button" id="add-model-btn" class="btn btn-secondary">
-                        <i class="fas fa-plus"></i> 添加车型
-                    </button>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">保存</button>
-                        <button type="button" class="btn btn-outline modal-cancel">取消</button>
+                    <!-- 模板用于添加新的车型条目 -->
+                    <div class="model-entry template" style="display: none;">
+                        <div class="form-group">
+                            <input type="text" class="form-control model-name" placeholder="车型" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" class="form-control model-sales" placeholder="销量" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" class="form-control model-growth" placeholder="同比增长率 (%)" step="0.01" required>
+                        </div>
+                        <button type="button" class="remove-model-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </form>
             </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelSalesBtn">取消</button>
+                <button class="btn btn-primary" id="saveSalesBtn">保存</button>
+            </div>
         </div>
     </div>
+    
+    <!-- 删除确认模态框 -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">确认删除</h3>
+                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这条销售数据吗？此操作无法撤销。</p>
+                <input type="hidden" id="deleteId">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">取消</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast 通知容器 -->
+    <div class="toast-container" id="toastContainer"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
-    const quarterFilter = document.getElementById('quarter-filter');
-    const salesTable = document.getElementById('sales-table').querySelector('tbody');
-    const addQuarterBtn = document.getElementById('add-quarter-btn');
-    const saveDataBtn = document.getElementById('save-data-btn');
-    const quarterModal = document.getElementById('quarter-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const quarterForm = document.getElementById('quarter-form');
-    const quarterNameInput = document.getElementById('quarter-name');
-    const modelsContainer = document.getElementById('models-container');
-    const addModelBtn = document.getElementById('add-model-btn');
-    
-    // Close modal when clicking close button or cancel
-    document.querySelectorAll('.modal-close, .modal-cancel').forEach(element => {
-        element.addEventListener('click', () => {
-            quarterModal.style.display = 'none';
-        });
-    });
-    
-    // Data storage
-    let salesData = null;
-    let currentQuarter = null;
-    
-    // Fetch sales data
-    fetchSalesData();
-    
-    function fetchSalesData() {
-        fetch('/api/sales')
-            .then(response => response.json())
-            .then(data => {
-                salesData = data;
-                populateQuarterFilter();
-                
-                // Select the latest quarter by default
-                if (salesData.quarterly_sales.length > 0) {
-                    const latestQuarter = salesData.quarterly_sales[salesData.quarterly_sales.length - 1].quarter;
-                    quarterFilter.value = latestQuarter;
-                    showQuarterData(latestQuarter);
-                }
-            })
-            .catch(error => console.error('Error fetching sales data:', error));
-    }
-    
-    function populateQuarterFilter() {
-        // Clear existing options except the placeholder
-        while (quarterFilter.options.length > 1) {
-            quarterFilter.options.remove(1);
-        }
-        
-        // Add quarter options
-        salesData.quarterly_sales.forEach(quarter => {
-            const option = document.createElement('option');
-            option.value = quarter.quarter;
-            option.textContent = quarter.quarter;
-            quarterFilter.appendChild(option);
-        });
-    }
-    
-    // Event listener for quarter filter
-    quarterFilter.addEventListener('change', function() {
-        const selectedQuarter = this.value;
-        if (selectedQuarter) {
-            showQuarterData(selectedQuarter);
-        } else {
-            // Clear the table if no quarter is selected
-            salesTable.innerHTML = '';
-        }
-    });
-    
-    function showQuarterData(quarterName) {
-        currentQuarter = quarterName;
-        
-        // Find the quarter data
-        const quarterData = salesData.quarterly_sales.find(q => q.quarter === quarterName);
-        if (!quarterData) return;
-        
-        // Clear existing rows
-        salesTable.innerHTML = '';
-        
-        // Populate table with models
-        quarterData.models.forEach(model => {
-            const row = document.createElement('tr');
-            
-            // Model name cell
-            const nameCell = document.createElement('td');
-            nameCell.textContent = model.name;
-            row.appendChild(nameCell);
-            
-            // Sales cell
-            const salesCell = document.createElement('td');
-            salesCell.textContent = model.sales.toLocaleString();
-            row.appendChild(salesCell);
-            
-            // Change cell
-            const changeCell = document.createElement('td');
-            const changeValue = model.change !== undefined ? model.change : 0;
-            changeCell.textContent = changeValue + '%';
-            changeCell.className = changeValue >= 0 ? 'positive-change' : 'negative-change';
-            row.appendChild(changeCell);
-            
-            // Actions cell
-            const actionsCell = document.createElement('td');
-            actionsCell.className = 'actions';
-            
-            // Edit button
-            const editBtn = document.createElement('button');
-            editBtn.className = 'btn btn-sm btn-primary edit-model-btn';
-            editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-            editBtn.addEventListener('click', () => editModel(model));
-            actionsCell.appendChild(editBtn);
-            
-            // Delete button (admin only)
-            if ("{{ session.role }}" === "admin") {
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger delete-model-btn';
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.addEventListener('click', () => deleteModel(model));
-                actionsCell.appendChild(deleteBtn);
-            }
-            
-            row.appendChild(actionsCell);
-            salesTable.appendChild(row);
-        });
-    }
-    
-    // Add Quarter Button
-    addQuarterBtn.addEventListener('click', function() {
-        modalTitle.textContent = '添加新季度';
-        quarterNameInput.value = '';
-        
-        // Clear models container except the template
-        const templateModel = modelsContainer.querySelector('.model-entry.template');
-        modelsContainer.innerHTML = '';
-        modelsContainer.appendChild(templateModel);
-        
-        // Add first model entry
-        addModelEntry();
-        
-        // Show modal
-        quarterModal.style.display = 'block';
-    });
-    
-    // Save Data Button
-    if (saveDataBtn) {
-        saveDataBtn.addEventListener('click', function() {
-            // Save all changes to the server
-            fetch('/api/sales', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(salesData)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    alert('数据保存成功！');
-                } else {
-                    alert('保存失败: ' + (result.error || '未知错误'));
-                }
-            })
-            .catch(error => {
-                console.error('Error saving data:', error);
-                alert('保存失败，请查看控制台了解详情');
-            });
-        });
-    }
-    
-    // Quarter Form Submit
-    quarterForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const quarterName = quarterNameInput.value.trim();
-        const models = [];
-        
-        // Collect model data
-        modelsContainer.querySelectorAll('.model-entry:not(.template)').forEach(entry => {
-            const nameInput = entry.querySelector('.model-name');
-            const salesInput = entry.querySelector('.model-sales');
-            const changeInput = entry.querySelector('.model-change');
-            
-            if (nameInput.value.trim() && salesInput.value.trim()) {
-                models.push({
-                    name: nameInput.value.trim(),
-                    sales: parseInt(salesInput.value),
-                    change: changeInput.value ? parseFloat(changeInput.value) : 0
-                });
-            }
-        });
-        
-        // Check if we have at least one model
-        if (models.length === 0) {
-            alert('请至少添加一个车型！');
-            return;
-        }
-        
-        // Add or update quarter
-        const existingQuarterIndex = salesData.quarterly_sales.findIndex(q => q.quarter === quarterName);
-        
-        if (existingQuarterIndex >= 0) {
-            // Update existing quarter
-            salesData.quarterly_sales[existingQuarterIndex].models = models;
-        } else {
-            // Add new quarter
-            salesData.quarterly_sales.push({
-                quarter: quarterName,
-                models: models
-            });
-        }
-        
-        // Update UI
-        populateQuarterFilter();
-        quarterFilter.value = quarterName;
-        showQuarterData(quarterName);
-        
-        // Close modal
-        quarterModal.style.display = 'none';
-    });
-    
-    // Add Model Entry
-    addModelBtn.addEventListener('click', addModelEntry);
-    
-    function addModelEntry(modelData = null) {
-        // Clone the template
-        const template = modelsContainer.querySelector('.model-entry.template');
-        const newEntry = template.cloneNode(true);
-        newEntry.classList.remove('template');
-        
-        // Fill with data if provided
-        if (modelData) {
-            newEntry.querySelector('.model-name').value = modelData.name;
-            newEntry.querySelector('.model-sales').value = modelData.sales;
-            newEntry.querySelector('.model-change').value = modelData.change !== undefined ? modelData.change : 0;
-        }
-        
-        // Add remove button functionality
-        newEntry.querySelector('.remove-model-btn').addEventListener('click', function() {
-            // Don't remove if it's the last model
-            if (modelsContainer.querySelectorAll('.model-entry:not(.template)').length > 1) {
-                newEntry.remove();
-            } else {
-                alert('至少需要一个车型！');
-            }
-        });
-        
-        // Add to container
-        modelsContainer.appendChild(newEntry);
-    }
-    
-    // Edit Model
-    function editModel(model) {
-        // Find the current quarter data
-        const quarterData = salesData.quarterly_sales.find(q => q.quarter === currentQuarter);
-        if (!quarterData) return;
-        
-        modalTitle.textContent = '编辑车型数据';
-        quarterNameInput.value = currentQuarter;
-        
-        // Clear models container except the template
-        const templateModel = modelsContainer.querySelector('.model-entry.template');
-        modelsContainer.innerHTML = '';
-        modelsContainer.appendChild(templateModel);
-        
-        // Add all models from this quarter
-        quarterData.models.forEach(m => {
-            addModelEntry(m);
-        });
-        
-        // Show modal
-        quarterModal.style.display = 'block';
-    }
-    
-    // Delete Model
-    function deleteModel(model) {
-        if (!confirm(`确定要删除「${model.name}」吗？`)) {
-            return;
-        }
-        
-        // Find the current quarter data
-        const quarterData = salesData.quarterly_sales.find(q => q.quarter === currentQuarter);
-        if (!quarterData) return;
-        
-        // Remove the model
-        const modelIndex = quarterData.models.findIndex(m => m.name === model.name);
-        if (modelIndex >= 0) {
-            quarterData.models.splice(modelIndex, 1);
-            
-            // Update UI
-            showQuarterData(currentQuarter);
-        }
-    }
-    
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        if (event.target === quarterModal) {
-            quarterModal.style.display = 'none';
-        }
-    });
-});
-</script>
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/sales.js') }}"></script>
 {% endblock %} 
