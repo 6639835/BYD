@@ -1,0 +1,57 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Coding Guidelines
+
+This rule documents the coding standards and conventions used in this project.
+
+## Frontend Code Conventions
+
+### HTML ([index.html](mdc:index.html))
+- Use semantic HTML5 elements (section, header, footer, etc.)
+- Include descriptive comments for major sections
+- Follow BEM naming convention for CSS classes
+
+### CSS ([css/style.css](mdc:css/style.css))
+- Organize CSS by component/section
+- Use CSS variables for colors and consistent values
+- Mobile-first responsive design with media queries
+- Use flexbox and grid for layouts
+
+### JavaScript ([js/main.js](mdc:js/main.js))
+- Use ES6+ features where appropriate
+- Organize code by functionality (data loading, chart init, events)
+- Add descriptive comments for complex functions
+- Use camelCase for variable and function names
+
+## Backend Code Conventions
+
+### Python ([admin/app.py](mdc:admin/app.py))
+- Follow PEP 8 style guidelines
+- Use Flask blueprints for larger modules
+- Organize routes by functionality
+- Include docstrings for functions
+- Use descriptive variable names
+- Implement proper error handling and logging
+
+## General Guidelines
+
+1. **Security Practices**:
+   - Always validate user input
+   - Implement proper authentication and authorization
+   - Use secure password handling
+   - Protect against common web vulnerabilities
+
+2. **Performance**:
+   - Optimize image sizes
+   - Minimize HTTP requests
+   - Use efficient algorithms for data processing
+   - Implement pagination for large datasets
+
+3. **Documentation**:
+   - Comment complex logic
+   - Keep README updated
+   - Document API endpoints
+   - Include setup instructions

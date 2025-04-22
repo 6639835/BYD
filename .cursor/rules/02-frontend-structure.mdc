@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Frontend Dashboard Structure
+
+The frontend is organized as a responsive, single-page dashboard that displays BYD car sales data.
+
+## Key Files
+
+- [index.html](mdc:index.html): Main HTML document with the dashboard structure
+- [css/style.css](mdc:css/style.css): CSS styling for the dashboard
+- [js/main.js](mdc:js/main.js): JavaScript functionality for the dashboard
+
+## Main Sections
+
+The dashboard has several key sections:
+
+1. **Hero Section**: Introductory section with title and period selector
+2. **Dashboard Section**: Summary KPIs and main charts
+3. **Detail Section**: Detailed data table with filtering options
+4. **Compare Section**: Tool for comparing different car models
+
+## Charts and Visualizations
+
+The dashboard uses ECharts for data visualization:
+
+- Bar chart for top car models by sales
+- Pie chart for sales type distribution
+- Line chart for monthly sales trends
+- Comparative charts for model comparison
+
+## Data Flow
+
+1. Data is loaded from the backend when the page initializes
+2. Period selection updates all visualizations
+3. Filter options apply to the detailed data table
+4. Compare feature allows selection of multiple models for comparison

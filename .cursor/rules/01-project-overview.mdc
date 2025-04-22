@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# BYD Car Sales Dashboard
+
+This project is a dashboard for BYD car sales data, featuring both a frontend visualization system and an admin backend for data management.
+
+## Project Structure
+
+- [index.html](mdc:index.html): Main frontend dashboard that displays BYD car sales data
+- [css/style.css](mdc:css/style.css): Styling for the frontend dashboard
+- [js/main.js](mdc:js/main.js): Frontend JavaScript functionality
+- [admin/app.py](mdc:admin/app.py): Flask admin backend application
+- [admin/requirements.txt](mdc:admin/requirements.txt): Python dependencies for the admin system
+- [admin/README.md](mdc:admin/README.md): Documentation for the admin system
+
+## Frontend
+
+The frontend is a responsive dashboard showcasing BYD car sales data with interactive charts and data visualization. It uses:
+
+- HTML/CSS/JavaScript
+- ECharts for data visualization
+- Particles.js for visual effects
+
+## Admin Backend
+
+The admin backend is a Flask application that:
+
+- Manages car sales data
+- Provides user authentication and authorization
+- Has role-based access control (admin, editor, viewer)
+- Stores data in JSON files

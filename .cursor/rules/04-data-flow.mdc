@@ -1,0 +1,51 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Data Flow and Integration
+
+This rule explains how data flows between the frontend dashboard and the admin backend.
+
+## Data Storage
+
+Data is stored in JSON files within the [admin/data/](mdc:admin/data) directory:
+- `sales_data.json`: Contains quarterly sales data for BYD car models
+- `users.json`: User account information for the admin system
+- `activity_log.json`: System activity logs
+
+## Data Management Flow
+
+1. **Admin Backend** ([admin/app.py](mdc:admin/app.py)):
+   - Manages authentication and authorization
+   - Provides API endpoints for data CRUD operations
+   - Stores data in JSON files
+
+2. **Frontend Dashboard** ([index.html](mdc:index.html), [js/main.js](mdc:js/main.js)):
+   - Loads data from the backend
+   - Visualizes data using ECharts
+   - Provides interactive filtering and comparison tools
+
+## Integration Points
+
+The frontend and backend integrate at these key points:
+
+1. **Data Loading**: 
+   - Frontend loads data from backend API endpoints
+   - Specific endpoints are used for different data types (quarterly data, model details, etc.)
+
+2. **Admin Portal Access**:
+   - Frontend provides link to admin access
+   - Authentication is required to access admin functionality
+
+3. **Data Visualization**:
+   - Data processed by backend is formatted for visualization on frontend
+   - Charts and tables draw directly from backend data sources
+
+## Development Workflow
+
+When modifying the system:
+1. Backend changes: Update routes and data handling in [admin/app.py](mdc:admin/app.py)
+2. Frontend visuals: Update charts and displays in [js/main.js](mdc:js/main.js)
+3. Frontend appearance: Modify styles in [css/style.css](mdc:css/style.css)
+4. Page structure: Update the layout in [index.html](mdc:index.html)

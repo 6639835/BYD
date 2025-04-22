@@ -1,0 +1,49 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Admin Backend System
+
+The admin backend is built with Flask and provides functionality to manage BYD car sales data.
+
+## Key Files and Directories
+
+- [admin/app.py](mdc:admin/app.py): Main Flask application with routes and logic
+- [admin/requirements.txt](mdc:admin/requirements.txt): Python dependencies
+- [admin/data/](mdc:admin/data): Directory for JSON data storage
+- [admin/templates/](mdc:admin/templates): HTML templates for the admin interface
+- [admin/static/](mdc:admin/static): Static assets for the admin interface
+
+## Key Features
+
+1. **Authentication System**: 
+   - Login/logout functionality
+   - Password reset
+   - Protection against brute force attempts
+
+2. **Authorization System**:
+   - Role-based access control (admin, editor, viewer)
+   - Permission checks for sensitive operations
+
+3. **Data Management**:
+   - View and edit quarterly sales data
+   - Add new quarters
+   - Data export functionality
+
+4. **User Management** (admin only):
+   - Create new users
+   - Edit user details and permissions
+   - Delete users
+
+5. **System Settings** (admin only):
+   - Backup data
+   - Restore from backup
+   - System configuration
+
+## Data Storage
+
+The system uses JSON files for data storage:
+- `users.json`: User accounts and permissions
+- `sales_data.json`: Car sales data by quarter
+- `activity_log.json`: System activity logs
