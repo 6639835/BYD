@@ -1,4 +1,8 @@
-/* Toast Notifications */
+/**
+ * Toast Notification Styles
+ * 提供美观的通知提示框样式
+ */
+
 .toast-container {
     position: fixed;
     top: 20px;
@@ -6,39 +10,80 @@
     z-index: 9999;
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 10px;
     max-width: 350px;
 }
 
 .toast {
-    background: var(--card-bg);
-    color: var(--text-primary);
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    border-left: 4px solid var(--secondary-color);
-    font-size: 14px;
-    opacity: 0;
-    transform: translateX(50px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(10px);
-}
-
-.toast.show {
+    display: flex;
+    align-items: flex-start;
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
+    max-width: 100%;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    border-left: 4px solid var(--info-color);
+    pointer-events: auto;
 }
 
+.toast-icon {
+    margin-right: 12px;
+    font-size: 1.25rem;
+    color: var(--info-color);
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex-grow: 1;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    padding-right: 0.5rem;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.5rem;
+    line-height: 1;
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    color: var(--text-primary);
+}
+
+/* Toast types */
 .toast-success {
     border-left-color: var(--success-color);
+}
+
+.toast-success .toast-icon {
+    color: var(--success-color);
+}
+
+.toast-warning {
+    border-left-color: var(--warning-color);
+}
+
+.toast-warning .toast-icon {
+    color: var(--warning-color);
 }
 
 .toast-error {
     border-left-color: var(--danger-color);
 }
 
-.toast-info {
-    border-left-color: var(--secondary-color);
+.toast-error .toast-icon {
+    color: var(--danger-color);
 }
 
 /* Confirm Dialog */
@@ -94,4 +139,18 @@
     display: flex;
     justify-content: flex-end;
     gap: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .toast {
+        width: 100%;
+    }
 } 

@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+@layer components {
+  .section {
+    @apply py-20 min-h-screen relative;
+  }
+
+  .container {
+    @apply w-full max-w-7xl mx-auto px-6 relative z-10;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-10 md:mb-16 text-center relative;
+    background: linear-gradient(90deg, #00a854, #1976d2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .section-title::after {
+    content: '';
+    @apply absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-primary rounded-full;
+  }
+
+  .btn {
+    @apply px-6 py-3 rounded-full font-medium transition-all duration-300 text-white
+           flex items-center justify-center gap-2 outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary-dark focus:ring-secondary;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent border border-white/20 hover:bg-white/10 focus:ring-white/30;
+  }
+
+  .card {
+    @apply bg-card border border-border rounded-2xl p-6 shadow-lg backdrop-blur-lg transition-all;
+  }
+
+  .card-title {
+    @apply text-xl font-semibold mb-4 flex justify-between items-center;
+  }
+
+  .floating-nav {
+    @apply fixed right-6 top-1/2 transform -translate-y-1/2 flex flex-col gap-4 z-50;
+  }
+
+  .nav-dot {
+    @apply w-3 h-3 rounded-full bg-white/20 transition-all duration-300 cursor-pointer
+           relative before:opacity-0 before:absolute before:content-[attr(data-label)]
+           before:right-7 before:whitespace-nowrap before:px-3 before:py-1.5 
+           before:rounded-lg before:bg-dark-surface before:text-white before:text-xs
+           before:transition-all before:duration-300;
+  }
+
+  .nav-dot.active, .nav-dot:hover {
+    @apply bg-primary shadow-glow;
+  }
+
+  .nav-dot:hover::before {
+    @apply opacity-100;
+  }
+
+  @media (prefers-reduced-motion) {
+    html {
+      @apply scroll-auto;
+    }
+  }
+} 

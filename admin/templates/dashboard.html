@@ -4,6 +4,10 @@
 
 {% block header_title %}<h2>管理面板</h2>{% endblock %}
 
+{% block breadcrumb %}
+<li class="breadcrumb-item active">管理面板</li>
+{% endblock %}
+
 {% block content %}
 <!-- 欢迎卡片 -->
 <div class="card mb-4">
@@ -13,42 +17,73 @@
                 <i class="fas fa-user"></i>
             </div>
         </div>
-        <div>
+        <div class="flex-grow">
             <h2 class="mb-1">欢迎回来，{{ session.display_name or session.username }}</h2>
             <p class="text-secondary mb-0">上次登录时间：{{ session.last_login|default('首次登录', true) }}</p>
         </div>
+        <div class="welcome-actions">
+            <a href="{{ url_for('account') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-cog"></i>
+                <span>账户设置</span>
+            </a>
+        </div>
     </div>
+</div>
+
+<!-- 销量统计卡片 -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <i class="fas fa-car"></i>
+        </div>
+        {% set models = sales_data.quarterly_sales[0].models|default([]) %}
+        {% set total_sales = models|map(attribute='sales')|sum|default(0) %}
+        {% if models|length > 0 %}
+            {% set avg_change = models|map(attribute='change')|sum / models|length %}
+        {% else %}
+            {% set avg_change = 0 %}
+        {% endif %}
+        <div class="stat-value">{{ "{:,}".format(total_sales) }}</div>
+        <div class="stat-label">总销量 (台)</div>
+        <div class="stat-change {% if avg_change > 0 %}positive{% else %}negative{% endif %}">
+            <i class="fas fa-{% if avg_change > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+            <span>{{ avg_change|round(1) }}% 同比</span>
+        </div>
+    </div>
+    
+    {% for model in (sales_data.quarterly_sales[0].models|default([]))[:3] %}
+    <div class="stat-card">
+        <div class="stat-icon {% if loop.index == 1 %}success{% elif loop.index == 2 %}info{% else %}secondary{% endif %}">
+            <i class="fas fa-{{ model.icon|default('car') }}"></i>
+        </div>
+        <div class="stat-value">{{ "{:,}".format(model.sales) }}</div>
+        <div class="stat-label">{{ model.name }} 销量</div>
+        <div class="stat-change {% if model.change > 0 %}positive{% else %}negative{% endif %}">
+            <i class="fas fa-{% if model.change > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+            <span>{{ model.change }}% 同比</span>
+        </div>
+    </div>
+    {% endfor %}
 </div>
 
 <!-- 销量数据区域 -->
 <div class="card mb-4">
     <div class="card-header">
         <h3 class="card-title">销售数据概览</h3>
-        <div class="quarter-selector">
-            <select id="quarter-select" class="form-control">
-                {% for quarter_data in sales_data.quarterly_sales %}
-                <option value="{{ quarter_data.quarter }}">{{ quarter_data.quarter }}</option>
-                {% endfor %}
-            </select>
+        <div class="card-actions">
+            <div class="quarter-selector">
+                <select id="quarter-select" class="form-control">
+                    {% for quarter_data in sales_data.quarterly_sales %}
+                    <option value="{{ quarter_data.quarter }}">{{ quarter_data.quarter }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn btn-sm btn-outline" id="toggle-chart-view" title="切换图表视图">
+                <i class="fas fa-exchange-alt"></i>
+            </button>
         </div>
     </div>
     <div class="card-body">
-        <!-- 总销量指标卡 -->
-        <div class="sales-summary mb-4">
-            <div class="total-sales">
-                <div class="value-large">{{ "{:,}".format(sales_data.quarterly_sales[0].total_sales|default(0)) }}</div>
-                <div class="label">总销量 (台)</div>
-                <div class="trend-indicator {% if sales_data.quarterly_sales[0].total_change|default(0) > 0 %}positive{% else %}negative{% endif %}">
-                    <i class="fas fa-{% if sales_data.quarterly_sales[0].total_change|default(0) > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
-                    <span>{{ sales_data.quarterly_sales[0].total_change|default(0) }}% 同比{{ '增长' if sales_data.quarterly_sales[0].total_change|default(0) > 0 else '下降' }}</span>
-                </div>
-            </div>
-            <div class="period-info">
-                <div class="period-label">{{ sales_data.quarterly_sales[0].quarter }}</div>
-                <div class="period-dates">{{ sales_data.quarterly_sales[0].date_range|default('') }}</div>
-            </div>
-        </div>
-        
         <!-- 销售图表 -->
         <div class="chart-container mb-4" style="position: relative; height: 350px;">
             <canvas id="sales-chart" data-sales="{{ sales_data|tojson|safe }}"></canvas>
@@ -56,8 +91,15 @@
         
         <!-- 车型销量卡片 -->
         <div class="model-sales-grid">
-            {% for model in sales_data.quarterly_sales[0].models %}
+            {% for model in sales_data.quarterly_sales[0].models|default([]) %}
             <div class="model-card">
+                <div class="model-rank 
+                    {% if loop.index == 1 %}rank-1
+                    {% elif loop.index == 2 %}rank-2
+                    {% elif loop.index == 3 %}rank-3
+                    {% endif %}">
+                    {{ loop.index }}
+                </div>
                 <div class="model-icon">
                     <i class="fas fa-{{ model.icon|default('car') }}"></i>
                 </div>
@@ -69,18 +111,31 @@
                         {{ model.change }}%
                     </div>
                 </div>
-                <div class="model-rank 
-                    {% if loop.index == 1 %}rank-1
-                    {% elif loop.index == 2 %}rank-2
-                    {% elif loop.index == 3 %}rank-3
-                    {% endif %}">
-                    {{ loop.index }}
+                <div class="model-progress">
+                    <div class="progress">
+                        {% if total_sales > 0 %}
+                            <div class="progress-bar" style="width: {{ (model.sales / total_sales * 100)|round|int }}%"></div>
+                        {% else %}
+                            <div class="progress-bar" style="width: 0%"></div>
+                        {% endif %}
+                    </div>
+                    <div class="model-percentage">
+                        {% if total_sales > 0 %}
+                            {{ (model.sales / total_sales * 100)|round|int }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    <div class="card-footer">
+    <div class="card-footer d-flex justify-between align-center">
+        <div class="period-info">
+            <div class="period-label">{{ sales_data.quarterly_sales[0].quarter }}</div>
+            <div class="period-dates">{{ sales_data.quarterly_sales[0].date_range|default('') }}</div>
+        </div>
         <a href="{{ url_for('sales') }}" class="btn btn-outline-primary">
             <i class="fas fa-chart-line"></i> 查看详细销售数据
         </a>
@@ -92,7 +147,7 @@
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">销售趋势分析</h3>
-            <div>
+            <div class="card-actions">
                 <button class="btn btn-sm btn-outline" id="toggle-chart-type">
                     <i class="fas fa-exchange-alt"></i> 切换图表
                 </button>
@@ -114,7 +169,7 @@
         <div class="card-header">
             <h3 class="card-title">最近活动</h3>
             {% if 'view_logs' in session.permissions or session.role == 'admin' %}
-            <a href="{{ url_for('activity_logs') }}" class="btn btn-icon">
+            <a href="{{ url_for('activity_logs') }}" class="btn btn-icon" title="查看所有活动">
                 <i class="fas fa-external-link-alt"></i>
             </a>
             {% endif %}
@@ -176,7 +231,7 @@
         <h3 class="card-title">快捷操作</h3>
     </div>
     <div class="card-body">
-        <div class="grid grid-4">
+        <div class="quick-actions-grid">
             <a href="{{ url_for('sales') }}" class="quick-action-card">
                 <div class="quick-action-icon">
                     <i class="fas fa-chart-bar"></i>
@@ -203,491 +258,74 @@
             </a>
             {% endif %}
             
-            {% if 'view_logs' in session.permissions or session.role == 'admin' %}
-            <a href="{{ url_for('activity_logs') }}" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <i class="fas fa-history"></i>
-                </div>
-                <h4 class="quick-action-title">活动日志</h4>
-                <p class="quick-action-desc">查看系统活动记录</p>
-            </a>
-            {% endif %}
-            
             {% if 'system_settings' in session.permissions or session.role == 'admin' %}
             <a href="{{ url_for('settings') }}" class="quick-action-card">
                 <div class="quick-action-icon">
                     <i class="fas fa-cog"></i>
                 </div>
                 <h4 class="quick-action-title">系统设置</h4>
-                <p class="quick-action-desc">配置系统参数和功能</p>
+                <p class="quick-action-desc">配置系统选项和参数</p>
             </a>
             {% endif %}
+            
+            <a href="{{ url_for('frontend') }}" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <h4 class="quick-action-title">前台预览</h4>
+                <p class="quick-action-desc">查看前台展示页面</p>
+            </a>
+            
+            <a href="{{ url_for('account') }}" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <h4 class="quick-action-title">账户设置</h4>
+                <p class="quick-action-desc">修改个人账户信息</p>
+            </a>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block styles %}
-<style>
-    /* 活动列表样式 */
-    .activity-list {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .activity-item {
-        display: flex;
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .activity-item:last-child {
-        border-bottom: none;
-    }
-    
-    .activity-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: var(--primary-light);
-        color: var(--primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-    
-    .activity-icon.primary { background-color: var(--primary-light); color: var(--primary-color); }
-    .activity-icon.secondary { background-color: var(--secondary-light); color: var(--secondary-color); }
-    .activity-icon.success { background-color: rgba(40, 167, 69, 0.1); color: var(--success-color); }
-    .activity-icon.warning { background-color: rgba(255, 186, 8, 0.1); color: var(--warning-color); }
-    .activity-icon.danger { background-color: rgba(220, 53, 69, 0.1); color: var(--danger-color); }
-    .activity-icon.info { background-color: rgba(23, 162, 184, 0.1); color: var(--info-color); }
-    
-    .activity-content {
-        flex: 1;
-    }
-    
-    .activity-title {
-        display: flex;
-        justify-content: space-between;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-    }
-    
-    .activity-title .user {
-        color: var(--text-primary);
-    }
-    
-    .activity-title .action {
-        font-size: 0.75rem;
-        background-color: var(--bg-input);
-        color: var(--text-secondary);
-        padding: 0.125rem 0.5rem;
-        border-radius: 0.25rem;
-    }
-    
-    .activity-time {
-        font-size: 0.8125rem;
-        color: var(--text-tertiary);
-    }
-    
-    /* 快捷操作卡片 */
-    .quick-action-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        background-color: var(--bg-input);
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        transition: all var(--transition-fast);
-        color: var(--text-primary);
-        text-decoration: none;
-    }
-    
-    .quick-action-card:hover {
-        background-color: var(--primary-light);
-        transform: translateY(-5px);
-        color: var(--text-primary);
-    }
-    
-    .quick-action-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background-color: var(--primary-light);
-        color: var(--primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
-        transition: all var(--transition-fast);
-    }
-    
-    .quick-action-card:hover .quick-action-icon {
-        background-color: var(--primary-color);
-        color: white;
-    }
-    
-    .quick-action-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
-    
-    .quick-action-desc {
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-        margin: 0;
-    }
-    
-    /* 销量数据样式 */
-    .sales-summary {
-        display: flex;
-        justify-content: space-between;
-        background-color: var(--bg-input);
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .sales-summary::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-    }
-    
-    .total-sales {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .value-large {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1.2;
-        margin-bottom: 0.25rem;
-        background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .label {
-        font-size: 1rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-    }
-    
-    .trend-indicator {
-        display: flex;
-        align-items: center;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    
-    .trend-indicator.positive { color: var(--success-color); }
-    .trend-indicator.negative { color: var(--danger-color); }
-    
-    .trend-indicator i {
-        margin-right: 0.25rem;
-    }
-    
-    .period-info {
-        text-align: right;
-    }
-    
-    .period-label {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-    
-    .period-dates {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-    }
-    
-    .model-sales-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-    }
-    
-    .model-card {
-        display: flex;
-        align-items: center;
-        padding: 1.25rem;
-        background-color: var(--bg-input);
-        border-radius: var(--border-radius);
-        position: relative;
-        overflow: hidden;
-        transition: transform var(--transition-fast);
-    }
-    
-    .model-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .model-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: var(--primary-light);
-        color: var(--primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-    
-    .model-info {
-        flex: 1;
-    }
-    
-    .model-name {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-    
-    .model-sales {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-    }
-    
-    .model-trend {
-        display: flex;
-        align-items: center;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-    
-    .model-trend.positive { color: var(--success-color); }
-    .model-trend.negative { color: var(--danger-color); }
-    
-    .model-trend i {
-        margin-right: 0.25rem;
-    }
-    
-    .model-rank {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.875rem;
-        border-bottom-left-radius: var(--border-radius);
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    
-    .model-rank.rank-1 {
-        background-color: rgba(255, 215, 0, 0.2);
-        color: #ffd700;
-    }
-    
-    .model-rank.rank-2 {
-        background-color: rgba(192, 192, 192, 0.2);
-        color: #c0c0c0;
-    }
-    
-    .model-rank.rank-3 {
-        background-color: rgba(205, 127, 50, 0.2);
-        color: #cd7f32;
-    }
-    
-    .chart-tabs {
-        display: flex;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .chart-tab {
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-secondary);
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
-        cursor: pointer;
-        transition: all var(--transition-fast);
-    }
-    
-    .chart-tab:hover {
-        color: var(--text-primary);
-    }
-    
-    .chart-tab.active {
-        color: var(--primary-color);
-        border-bottom-color: var(--primary-color);
-    }
-    
-    .quarter-selector {
-        position: relative;
-        min-width: 180px;
-    }
-    
-    .quarter-selector .form-control {
-        padding-right: 2rem;
-        appearance: none;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
-        background-size: 16px;
-    }
-    
-    .chart-container {
-        margin-bottom: 1rem;
-    }
-    
-    @media (max-width: 767.98px) {
-        .sales-summary {
-            flex-direction: column;
-        }
-        
-        .period-info {
-            text-align: left;
-            margin-top: 1rem;
-        }
-        
-        .model-sales-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // 获取销售数据
-    const salesChartElement = document.getElementById('sales-chart');
-    const salesData = JSON.parse(salesChartElement.dataset.sales || '{"quarterly_sales":[]}');
+    const salesChartElem = document.getElementById('sales-chart');
+    const trendChartElem = document.getElementById('trend-chart');
     
-    // 获取当前季度数据（默认第一个）
-    let currentQuarterData = salesData.quarterly_sales && salesData.quarterly_sales.length > 0 
-        ? salesData.quarterly_sales[0] 
-        : {quarter: '暂无数据', models: []};
+    // 安全解析销售数据
+    let salesData;
+    try {
+        salesData = JSON.parse(salesChartElem.getAttribute('data-sales'));
+    } catch (e) {
+        console.error('Error parsing sales data:', e);
+        salesData = { quarterly_sales: [{ quarter: 'No Data', models: [] }] };
+    }
     
-    // 设置销量图表
-    const ctx = salesChartElement.getContext('2d');
-    const salesChart = new Chart(ctx, {
+    // 确保quarterly_sales存在且有数据
+    if (!salesData.quarterly_sales || !Array.isArray(salesData.quarterly_sales) || salesData.quarterly_sales.length === 0) {
+        salesData.quarterly_sales = [{ quarter: 'No Data', models: [] }];
+    }
+    
+    // 确保第一个季度的数据存在且models是数组
+    if (!salesData.quarterly_sales[0].models || !Array.isArray(salesData.quarterly_sales[0].models)) {
+        salesData.quarterly_sales[0].models = [];
+    }
+    
+    // 销量图表初始化
+    const salesChart = new Chart(salesChartElem, {
         type: 'bar',
         data: {
-            labels: currentQuarterData.models.map(model => model.name),
+            labels: salesData.quarterly_sales[0].models.map(model => model.name || 'Unknown'),
             datasets: [{
-                label: currentQuarterData.quarter + ' 销量',
-                data: currentQuarterData.models.map(model => model.sales),
-                backgroundColor: 'rgba(0, 91, 172, 0.7)',
-                borderColor: 'rgba(0, 91, 172, 1)',
-                borderWidth: 1,
-                borderRadius: 6,
-                maxBarThickness: 40
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            family: '"Noto Sans SC", sans-serif',
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(16, 24, 40, 0.9)',
-                    bodyFont: {
-                        family: '"Noto Sans SC", sans-serif',
-                        size: 13
-                    },
-                    titleFont: {
-                        family: '"Noto Sans SC", sans-serif',
-                        size: 14,
-                        weight: 'bold'
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    displayColors: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            family: '"Noto Sans SC", sans-serif'
-                        },
-                        callback: function(value) {
-                            return value >= 1000 ? value / 1000 + 'k' : value;
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            family: '"Noto Sans SC", sans-serif'
-                        }
-                    }
-                }
-            }
-        }
-    });
-    
-    // 设置趋势图表
-    const trendCtx = document.getElementById('trend-chart').getContext('2d');
-    
-    // 构建月度趋势数据（示例数据，实际应从后端获取）
-    const monthlyLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    const monthlyData = [12500, 15000, 18000, 16500, 21000, 22500, 25000, 23500, 27000, 29500, 31000, 35000];
-    
-    const trendChart = new Chart(trendCtx, {
-        type: 'line',
-        data: {
-            labels: monthlyLabels,
-            datasets: [{
-                label: '销量趋势',
-                data: monthlyData,
-                borderColor: 'rgba(0, 168, 132, 1)',
-                backgroundColor: 'rgba(0, 168, 132, 0.1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: 'rgba(0, 168, 132, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                label: '销量 (台)',
+                data: salesData.quarterly_sales[0].models.map(model => model.sales || 0),
+                backgroundColor: 'rgba(0, 119, 204, 0.7)',
+                borderColor: 'rgba(0, 119, 204, 1)',
+                borderWidth: 1
             }]
         },
         options: {
@@ -698,22 +336,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(16, 24, 40, 0.9)',
-                    bodyFont: {
-                        family: '"Noto Sans SC", sans-serif',
-                        size: 13
-                    },
-                    titleFont: {
-                        family: '"Noto Sans SC", sans-serif',
-                        size: 14,
-                        weight: 'bold'
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    displayColors: false,
                     callbacks: {
                         label: function(context) {
-                            return '销量: ' + context.raw.toLocaleString() + ' 台';
+                            return `销量: ${context.raw.toLocaleString()} 台`;
                         }
                     }
                 }
@@ -722,126 +347,516 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: {
                     beginAtZero: true,
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            family: '"Noto Sans SC", sans-serif'
-                        },
-                        callback: function(value) {
-                            return value >= 1000 ? value / 1000 + 'k' : value;
-                        }
+                        color: 'rgba(255, 255, 255, 0.05)'
                     }
                 },
                 x: {
                     grid: {
-                        display: false,
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            family: '"Noto Sans SC", sans-serif'
-                        }
+                        display: false
                     }
                 }
             }
         }
     });
     
-    // 图表类型切换
-    const toggleChartType = document.getElementById('toggle-chart-type');
-    let currentChartType = 'line';
+    // 趋势图表初始化
+    const trendChart = new Chart(trendChartElem, {
+        type: 'line',
+        data: {
+            labels: ['一月', '二月', '三月', '四月', '五月', '六月'],
+            datasets: [{
+                label: '总销量',
+                data: [12000, 19000, 15000, 25000, 22000, 30000],
+                borderColor: 'rgba(0, 119, 204, 1)',
+                backgroundColor: 'rgba(0, 119, 204, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    }
+                }
+            }
+        }
+    });
     
-    toggleChartType.addEventListener('click', function() {
-        currentChartType = currentChartType === 'line' ? 'bar' : 'line';
-        trendChart.config.type = currentChartType;
+    // 切换图表类型
+    document.getElementById('toggle-chart-type').addEventListener('click', function() {
+        if (trendChart.config.type === 'line') {
+            trendChart.config.type = 'bar';
+            this.innerHTML = '<i class="fas fa-exchange-alt"></i> 切换为折线图';
+        } else {
+            trendChart.config.type = 'line';
+            this.innerHTML = '<i class="fas fa-exchange-alt"></i> 切换为柱状图';
+        }
         trendChart.update();
     });
     
-    // 季度选择器
-    const quarterSelect = document.getElementById('quarter-select');
+    // 切换销售图表视图
+    document.getElementById('toggle-chart-view').addEventListener('click', function() {
+        if (salesChart.config.type === 'bar') {
+            salesChart.config.type = 'pie';
+            salesChart.options.plugins.legend.display = true;
+        } else if (salesChart.config.type === 'pie') {
+            salesChart.config.type = 'doughnut';
+        } else {
+            salesChart.config.type = 'bar';
+            salesChart.options.plugins.legend.display = false;
+        }
+        salesChart.update();
+    });
     
-    quarterSelect.addEventListener('change', function() {
+    // 季度选择器
+    document.getElementById('quarter-select').addEventListener('change', function() {
         const selectedQuarter = this.value;
-        
-        // 查找季度数据
         const quarterData = salesData.quarterly_sales.find(q => q.quarter === selectedQuarter);
         
-        if (quarterData) {
-            // 更新主图表
+        if (quarterData && quarterData.models && quarterData.models.length > 0) {
+            // 计算总销量和平均变化率
+            const totalSales = quarterData.models.reduce((sum, model) => sum + model.sales, 0);
+            const avgChange = quarterData.models.length > 0 
+                ? quarterData.models.reduce((sum, model) => sum + (model.change || 0), 0) / quarterData.models.length 
+                : 0;
+            
+            // 更新销量图表
             salesChart.data.labels = quarterData.models.map(model => model.name);
-            salesChart.data.datasets[0].label = quarterData.quarter + ' 销量';
             salesChart.data.datasets[0].data = quarterData.models.map(model => model.sales);
             salesChart.update();
             
-            // 更新总销量信息
-            document.querySelector('.value-large').textContent = quarterData.total_sales ? quarterData.total_sales.toLocaleString() : '0';
-            
-            const trendIndicator = document.querySelector('.trend-indicator');
-            const totalChange = quarterData.total_change || 0;
-            
-            trendIndicator.className = 'trend-indicator ' + (totalChange > 0 ? 'positive' : 'negative');
-            trendIndicator.querySelector('i').className = 'fas fa-' + (totalChange > 0 ? 'arrow-up' : 'arrow-down');
-            trendIndicator.querySelector('span').textContent = totalChange + '% 同比' + (totalChange > 0 ? '增长' : '下降');
+            // 更新销量统计
+            document.querySelector('.stat-value').textContent = totalSales.toLocaleString();
+            const totalChangeElem = document.querySelector('.stat-change');
+            totalChangeElem.classList.remove('positive', 'negative');
+            totalChangeElem.classList.add(avgChange > 0 ? 'positive' : 'negative');
+            totalChangeElem.querySelector('i').className = `fas fa-${avgChange > 0 ? 'arrow-up' : 'arrow-down'}`;
+            totalChangeElem.querySelector('span').textContent = `${avgChange.toFixed(1)}% 同比`;
             
             // 更新期间信息
-            document.querySelector('.period-label').textContent = quarterData.quarter;
-            document.querySelector('.period-dates').textContent = quarterData.date_range || '';
+            document.querySelector('.period-info .period-label').textContent = quarterData.quarter;
+            document.querySelector('.period-info .period-dates').textContent = quarterData.date_range || '';
             
             // 更新车型卡片
             const modelCards = document.querySelectorAll('.model-card');
-            
-            // 按销量排序
-            const sortedModels = [...quarterData.models].sort((a, b) => b.sales - a.sales);
-            
-            sortedModels.forEach((model, index) => {
+            quarterData.models.forEach((model, index) => {
                 if (modelCards[index]) {
                     modelCards[index].querySelector('.model-name').textContent = model.name;
-                    modelCards[index].querySelector('.model-sales').textContent = model.sales.toLocaleString() + '台';
+                    modelCards[index].querySelector('.model-sales').textContent = `${model.sales.toLocaleString()}台`;
                     
-                    const trendElement = modelCards[index].querySelector('.model-trend');
-                    trendElement.className = 'model-trend ' + (model.change > 0 ? 'positive' : 'negative');
-                    trendElement.querySelector('i').className = 'fas fa-' + (model.change > 0 ? 'arrow-up' : 'arrow-down');
-                    trendElement.querySelector('i').nextSibling.textContent = model.change + '%';
+                    const trendElem = modelCards[index].querySelector('.model-trend');
+                    trendElem.classList.remove('positive', 'negative');
+                    trendElem.classList.add(model.change > 0 ? 'positive' : 'negative');
+                    trendElem.querySelector('i').className = `fas fa-${model.change > 0 ? 'arrow-up' : 'arrow-down'}`;
                     
-                    const rankElement = modelCards[index].querySelector('.model-rank');
-                    rankElement.className = 'model-rank ' + ((index + 1 <= 3) ? `rank-${index + 1}` : '');
-                    rankElement.textContent = index + 1;
+                    // 更新进度条
+                    if (totalSales > 0) {
+                        const percentage = (model.sales / totalSales * 100).toFixed(0);
+                        modelCards[index].querySelector('.progress-bar').style.width = `${percentage}%`;
+                        modelCards[index].querySelector('.model-percentage').textContent = `${percentage}%`;
+                    } else {
+                        modelCards[index].querySelector('.progress-bar').style.width = '0%';
+                        modelCards[index].querySelector('.model-percentage').textContent = '0%';
+                    }
                 }
             });
         }
     });
     
-    // 图表时间周期切换
+    // 图表切换标签
     const chartTabs = document.querySelectorAll('.chart-tab');
-    
     chartTabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            // 移除所有激活状态
             chartTabs.forEach(t => t.classList.remove('active'));
-            // 设置当前选项卡为激活状态
             this.classList.add('active');
             
-            const period = this.dataset.period;
-            
-            // 根据选择的周期更新图表数据（示例数据）
+            const period = this.getAttribute('data-period');
+            // 这里可以根据period更新趋势图表，示例中使用了模拟数据
             if (period === 'monthly') {
-                trendChart.data.labels = monthlyLabels;
-                trendChart.data.datasets[0].data = monthlyData;
+                trendChart.data.labels = ['一月', '二月', '三月', '四月', '五月', '六月'];
+                trendChart.data.datasets[0].data = [12000, 19000, 15000, 25000, 22000, 30000];
             } else if (period === 'quarterly') {
-                trendChart.data.labels = ['Q1 2022', 'Q2 2022', 'Q3 2022', 'Q4 2022', 'Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023'];
-                trendChart.data.datasets[0].data = [45000, 55000, 60000, 72000, 85000, 95000, 110000, 125000];
+                trendChart.data.labels = ['第一季度', '第二季度', '第三季度', '第四季度'];
+                trendChart.data.datasets[0].data = [46000, 78000, 92000, 115000];
             } else if (period === 'yearly') {
-                trendChart.data.labels = ['2018', '2019', '2020', '2021', '2022', '2023'];
-                trendChart.data.datasets[0].data = [150000, 220000, 280000, 320000, 450000, 580000];
+                trendChart.data.labels = ['2019', '2020', '2021', '2022', '2023'];
+                trendChart.data.datasets[0].data = [240000, 210000, 280000, 320000, 380000];
             }
-            
             trendChart.update();
         });
     });
 });
 </script>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* 销量统计卡片样式 */
+.model-sales-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.model-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.model-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-sm);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.model-rank {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.model-rank.rank-1 {
+    background-color: rgba(245, 158, 11, 0.3);
+    color: var(--warning-color);
+}
+
+.model-rank.rank-2 {
+    background-color: rgba(107, 114, 128, 0.3);
+    color: #d1d5db;
+}
+
+.model-rank.rank-3 {
+    background-color: rgba(180, 83, 9, 0.3);
+    color: #f59e0b;
+}
+
+.model-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+}
+
+.model-info {
+    flex: 1;
+    min-width: 150px;
+}
+
+.model-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.model-sales {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.model-trend {
+    font-size: 0.875rem;
+}
+
+.model-trend.positive {
+    color: var(--success-color);
+}
+
+.model-trend.negative {
+    color: var(--danger-color);
+}
+
+.model-progress {
+    flex-basis: 100%;
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.progress {
+    flex: 1;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 10px;
+}
+
+.model-percentage {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* 销售数据概览 */
+.period-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.period-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.period-dates {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.total-sales {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.value-large {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.label {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.trend-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    gap: 0.25rem;
+}
+
+.trend-indicator.positive {
+    color: var(--success-color);
+}
+
+.trend-indicator.negative {
+    color: var(--danger-color);
+}
+
+/* 图表选项卡 */
+.chart-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.chart-tab {
+    padding: 0.5rem 1rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.chart-tab:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.chart-tab.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* 活动列表 */
+.activity-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+}
+
+.activity-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.activity-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.875rem;
+}
+
+.activity-icon.primary { background-color: var(--primary-light); color: var(--primary-color); }
+.activity-icon.secondary { background-color: var(--secondary-light); color: var(--secondary-color); }
+.activity-icon.success { background-color: rgba(34, 197, 94, 0.1); color: var(--success-color); }
+.activity-icon.warning { background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color); }
+.activity-icon.danger { background-color: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
+.activity-icon.info { background-color: rgba(59, 130, 246, 0.1); color: var(--info-color); }
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    margin-bottom: 0.25rem;
+}
+
+.activity-title .user {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-title .action {
+    color: var(--text-secondary);
+    margin-left: 0.25rem;
+}
+
+.activity-time {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+/* 快捷操作 */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.quick-action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: var(--border-radius);
+    transition: all var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.quick-action-card:hover {
+    transform: translateY(-5px);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-md);
+}
+
+.quick-action-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all var(--transition);
+}
+
+.quick-action-card:hover .quick-action-icon {
+    background-color: var(--primary-color);
+    color: white;
+    transform: scale(1.1);
+}
+
+.quick-action-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.quick-action-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* 卡片操作按钮 */
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.welcome-actions {
+    margin-left: 1rem;
+}
+
+/* 改进的响应式设计 */
+@media (max-width: 767.98px) {
+    .model-sales-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-actions-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+</style>
 {% endblock %} 

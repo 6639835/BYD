@@ -9,8 +9,24 @@ function scrollToSection(selector) {
     }
 }
 
-// Update nav dots on scroll
-window.addEventListener('scroll', function() {
+// Debounce function to limit how often a function is called
+function debounce(func, wait = 20, immediate = true) {
+    let timeout;
+    return function() {
+        const context = this, args = arguments;
+        const later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+}
+
+// Update nav dots on scroll - using debounce for better performance
+const handleScroll = debounce(function() {
     const heroSection = document.querySelector('.hero-section');
     const dashboard = document.querySelector('.dashboard');
     const detailSection = document.querySelector('.detail-section');
@@ -37,22 +53,11 @@ window.addEventListener('scroll', function() {
     if (heroSection) {
         heroSection.style.backgroundPosition = `50% ${window.pageYOffset * 0.5}px`;
     }
-    
-    // Animate elements when they come into view
-    document.querySelectorAll('.kpi-card, .card').forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const isVisible = rect.top <= window.innerHeight * 0.8 && rect.bottom >= 0;
-        
-        if (isVisible && !el.classList.contains('animated')) {
-            el.classList.add('animated');
-            el.style.animation = 'fadeInUp 0.8s ease forwards';
-            el.style.opacity = '0';
-            setTimeout(() => {
-                el.style.opacity = '1';
-            }, 300);
-        }
-    });
-});
+}, 10);
+
+window.addEventListener('scroll', handleScroll);
+// Call once on load to set initial state
+window.addEventListener('load', handleScroll);
 
 // 数据
 const allPeriodsData = {
@@ -341,1101 +346,1318 @@ const themes = {
     }
 };
 
+// Create chart instances
+window.chartInstances = {
+    mainChart: echarts.init(document.getElementById('main-chart')),
+    pieChart: echarts.init(document.getElementById('pie-chart')),
+    trendChart: echarts.init(document.getElementById('trend-chart')),
+    comparisonChart: echarts.init(document.getElementById('comparison-chart')),
+    trendComparisonChart: echarts.init(document.getElementById('trend-comparison-chart')),
+    chartjsComparison: null, // Will be initialized later
+    chartjsRadar: null       // Will be initialized later
+};
+
 // 初始化图表和引用对象
 let charts = {};
 
 // 初始化各图表
 function initCharts() {
-    // 主图表 - 车型销量排行
+    // Create main bar chart
     const mainChart = echarts.init(document.getElementById('main-chart'));
+    
     const mainOption = {
-        grid: {
-            left: '3%',
-            right: '6%',
-            bottom: '3%',
-            top: '3%',
-            containLabel: true
-        },
         tooltip: {
             trigger: 'axis',
             axisPointer: {
                 type: 'shadow'
             },
-            formatter: '{b}: {c} 辆',
-            backgroundColor: 'rgba(16, 20, 40, 0.85)',
-            borderColor: 'rgba(0, 230, 118, 0.3)',
-            borderWidth: 1,
-            textStyle: {
-                color: '#fff'
+            formatter: function(params) {
+                return `${params[0].name}: ${params[0].value.toLocaleString()} 辆`;
             }
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '3%',
+            containLabel: true
         },
         xAxis: {
             type: 'value',
-            name: '销量（辆）',
-            nameTextStyle: {
-                color: 'rgba(255, 255, 255, 0.6)'
-            },
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.2)'
                 }
             },
-            axisTick: {
-                show: false
-            },
             axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)'
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: 11
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.05)'
                 }
             }
         },
         yAxis: {
             type: 'category',
-            data: salesData.models.slice().reverse(),
+            data: [],
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.2)'
                 }
             },
-            axisTick: {
-                show: false
-            },
             axisLabel: {
-                color: 'rgba(255, 255, 255, 0.9)',
-                interval: 0
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: 12
             }
         },
         series: [{
             name: '销量',
             type: 'bar',
-            data: salesData.sales.slice().reverse(),
+            data: [],
+            barWidth: '60%',
+            barGap: '-100%',
+            itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                    { offset: 0, color: '#00a854' },
+                    { offset: 1, color: '#1976d2' }
+                ]),
+                borderRadius: [0, 4, 4, 0]
+            },
             label: {
                 show: true,
                 position: 'right',
-                formatter: '{c} 辆',
-                color: 'rgba(255, 255, 255, 0.9)'
-            },
-            itemStyle: {
-                borderRadius: [0, 6, 6, 0],
-                color: function(params) {
-                    const colorList = themes.color;
-                    return new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                        { offset: 0, color: colorList[params.dataIndex % colorList.length] + '80' },
-                        { offset: 1, color: colorList[params.dataIndex % colorList.length] }
-                    ]);
+                color: 'rgba(255, 255, 255, 0.7)',
+                formatter: function(params) {
+                    return params.value.toLocaleString();
                 }
-            }
-        }],
-        animationDuration: 2000,
-        animationEasing: 'elasticOut'
+            },
+            z: 2
+        },
+        {
+            name: '背景',
+            type: 'bar',
+            data: [],
+            barWidth: '60%',
+            barGap: '-100%',
+            itemStyle: {
+                color: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: [0, 4, 4, 0]
+            },
+            z: 1
+        }]
     };
+    
     mainChart.setOption(mainOption);
-
-    // 饼图 - 销量类型分布
+    
+    // Create pie chart
     const pieChart = echarts.init(document.getElementById('pie-chart'));
+    
     const pieOption = {
         tooltip: {
             trigger: 'item',
-            formatter: '{b}: {c} 辆 ({d}%)'
+            formatter: '{b}: {c} ({d}%)'
         },
         legend: {
             orient: 'vertical',
-            left: 'left',
+            right: 10,
+            top: 'center',
             textStyle: {
                 color: 'rgba(255, 255, 255, 0.7)'
             }
         },
-        series: [
-            {
-                name: '销量类型',
-                type: 'pie',
-                radius: ['40%', '70%'],
-                center: ['60%', '50%'],
-                avoidLabelOverlap: false,
-                itemStyle: {
-                    borderRadius: 10,
-                    borderColor: '#000',
-                    borderWidth: 2
-                },
+        series: [{
+            name: '销量类型',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+                borderColor: 'rgba(25, 32, 65, 0.7)',
+                borderWidth: 2
+            },
+            label: {
+                show: false
+            },
+            emphasis: {
                 label: {
-                    show: false,
-                    position: 'center'
+                    show: true,
+                    fontWeight: 'bold'
                 },
-                emphasis: {
-                    label: {
-                        show: true,
-                        fontSize: '18',
-                        fontWeight: 'bold'
-                    }
-                },
-                labelLine: {
-                    show: false
-                },
-                data: [
-                    { 
-                        value: salesData.types['DM-i混动'], 
-                        name: 'DM-i混动',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#3eecac'},
-                            {offset: 1, color: '#3ba272'}
-                        ])}
-                    },
-                    { 
-                        value: salesData.types['EV纯电'], 
-                        name: 'EV纯电',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#ee74e1'},
-                            {offset: 1, color: '#9a60b4'}
-                        ])}
-                    },
-                    { 
-                        value: salesData.types['燃油车'], 
-                        name: '燃油车',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#fac858'},
-                            {offset: 1, color: '#fc8452'}
-                        ])}
-                    }
-                ]
-            }
-        ],
-        animationDuration: 1500,
-        animationEasing: 'elasticOut'
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            },
+            labelLine: {
+                show: false
+            },
+            data: []
+        }]
     };
+    
     pieChart.setOption(pieOption);
-
-    // 趋势图 - 月度销量趋势
+    
+    // Create trend chart
     const trendChart = echarts.init(document.getElementById('trend-chart'));
+    
     const trendOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
-                type: 'shadow'
+                type: 'cross',
+                label: {
+                    backgroundColor: '#6a7985'
+                }
             }
         },
         legend: {
-            data: ['1月', '2月', '3月'],
+            data: [],
             textStyle: {
                 color: 'rgba(255, 255, 255, 0.7)'
             },
-            top: 'bottom'
+            top: 0
         },
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '15%',
-            top: '3%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'category',
-            data: ['秦PLUS DM-i', '宋PLUS DM-i', '元PLUS', '海豚', '汉EV'],
-            axisLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                }
-            },
-            axisTick: {
-                show: false
-            },
-            axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)',
-                rotate: 45,
-                fontSize: 10
-            }
-        },
-        yAxis: {
-            type: 'value',
-            name: '销量',
-            axisLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                }
-            },
-            axisTick: {
-                show: false
-            },
-            axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)'
-            },
-            splitLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                }
-            }
-        },
-        series: [
-            {
-                name: '1月',
-                type: 'bar',
-                emphasis: {
-                    focus: 'series'
-                },
-                data: salesData.monthlyTrend['1月'].slice(0, 5),
-                itemStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: '#5470c6'},
-                        {offset: 1, color: '#73c0de'}
-                    ])
-                }
-            },
-            {
-                name: '2月',
-                type: 'bar',
-                emphasis: {
-                    focus: 'series'
-                },
-                data: salesData.monthlyTrend['2月'].slice(0, 5),
-                itemStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: '#91cc75'},
-                        {offset: 1, color: '#3ba272'}
-                    ])
-                }
-            },
-            {
-                name: '3月',
-                type: 'bar',
-                emphasis: {
-                    focus: 'series'
-                },
-                data: salesData.monthlyTrend['3月'].slice(0, 5),
-                itemStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: '#ee6666'},
-                        {offset: 1, color: '#fc8452'}
-                    ])
-                }
-            }
-        ],
-        animationDuration: 1500,
-        animationEasing: 'elasticOut'
-    };
-    trendChart.setOption(trendOption);
-
-    // 保存图表引用
-    charts = {
-        'main-chart': mainChart,
-        'pie-chart': pieChart,
-        'trend-chart': trendChart
-    };
-
-    // 窗口调整大小事件
-    window.addEventListener('resize', function() {
-        mainChart.resize();
-        pieChart.resize();
-        trendChart.resize();
-    });
-
-    // Apply smooth animations to all charts
-    setTimeout(() => {
-        for (let key in charts) {
-            if (charts[key]) {
-                charts[key].dispatchAction({
-                    type: 'highlight',
-                    seriesIndex: 0,
-                    dataIndex: 0
-                });
-                setTimeout(() => {
-                    charts[key].dispatchAction({
-                        type: 'downplay',
-                        seriesIndex: 0,
-                        dataIndex: 0
-                    });
-                }, 1000);
-            }
-        }
-    }, 2500);
-
-    return charts;
-}
-
-// 图表刷新动画
-function refreshChart(chartId) {
-    const refreshButton = document.querySelector(`.refresh[onclick="refreshChart('${chartId}')"]`);
-    refreshButton.style.transition = 'transform 0.5s ease';
-    refreshButton.style.transform = 'rotate(360deg)';
-    
-    setTimeout(() => {
-        if (charts[chartId]) {
-            charts[chartId].clear();
-            switch (chartId) {
-                case 'main-chart':
-                    charts[chartId].setOption({
-                        series: [{
-                            data: salesData.sales.slice().reverse()
-                        }]
-                    });
-                    break;
-                case 'pie-chart':
-                    charts[chartId].setOption({
-                        series: [{
-                            data: [
-                                {
-                                    value: salesData.types['DM-i混动'],
-                                    name: 'DM-i混动',
-                                    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        {offset: 0, color: '#3eecac'},
-                                        {offset: 1, color: '#3ba272'}
-                                    ])}
-                                },
-                                {
-                                    value: salesData.types['EV纯电'],
-                                    name: 'EV纯电',
-                                    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        {offset: 0, color: '#ee74e1'},
-                                        {offset: 1, color: '#9a60b4'}
-                                    ])}
-                                },
-                                {
-                                    value: salesData.types['燃油车'],
-                                    name: '燃油车',
-                                    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                        {offset: 0, color: '#fac858'},
-                                        {offset: 1, color: '#fc8452'}
-                                    ])}
-                                }
-                            ]
-                        }]
-                    });
-                    break;
-                case 'trend-chart':
-                    charts[chartId].setOption({
-                        series: [
-                            {
-                                data: salesData.monthlyTrend['1月'].slice(0, 5)
-                            },
-                            {
-                                data: salesData.monthlyTrend['2月'].slice(0, 5)
-                            },
-                            {
-                                data: salesData.monthlyTrend['3月'].slice(0, 5)
-                            }
-                        ]
-                    });
-                    break;
-            }
-        }
-        
-        setTimeout(() => {
-            refreshButton.style.transform = 'rotate(0deg)';
-        }, 500);
-    }, 300);
-}
-
-// 初始化所有图表
-document.addEventListener('DOMContentLoaded', function() {
-    initCharts();
-    
-    // 数字动画
-    setTimeout(() => {
-        new CountUp('total-sales', 0, totalSales).start();
-        new CountUp('hybrid-percent', 0, hybridPercent, {
-            suffix: '%'
-        }).start();
-    }, 1000);
-});
-
-// Particles.js 配置
-document.addEventListener('DOMContentLoaded', function() {
-    particlesJS('particles-js', {
-        "particles": {
-            "number": {
-                "value": 80,
-                "density": {
-                    "enable": true,
-                    "value_area": 800
-                }
-            },
-            "color": {
-                "value": "#0066ff"
-            },
-            "shape": {
-                "type": "circle",
-                "stroke": {
-                    "width": 0,
-                    "color": "#000000"
-                },
-                "polygon": {
-                    "nb_sides": 5
-                }
-            },
-            "opacity": {
-                "value": 0.5,
-                "random": false,
-                "anim": {
-                    "enable": false,
-                    "speed": 1,
-                    "opacity_min": 0.1,
-                    "sync": false
-                }
-            },
-            "size": {
-                "value": 3,
-                "random": true,
-                "anim": {
-                    "enable": false,
-                    "speed": 40,
-                    "size_min": 0.1,
-                    "sync": false
-                }
-            },
-            "line_linked": {
-                "enable": true,
-                "distance": 150,
-                "color": "#0066ff",
-                "opacity": 0.4,
-                "width": 1
-            },
-            "move": {
-                "enable": true,
-                "speed": 2,
-                "direction": "none",
-                "random": false,
-                "straight": false,
-                "out_mode": "out",
-                "bounce": false,
-                "attract": {
-                    "enable": false,
-                    "rotateX": 600,
-                    "rotateY": 1200
-                }
-            }
-        },
-        "interactivity": {
-            "detect_on": "canvas",
-            "events": {
-                "onhover": {
-                    "enable": true,
-                    "mode": "grab"
-                },
-                "onclick": {
-                    "enable": true,
-                    "mode": "push"
-                },
-                "resize": true
-            },
-            "modes": {
-                "grab": {
-                    "distance": 140,
-                    "line_linked": {
-                        "opacity": 1
-                    }
-                },
-                "bubble": {
-                    "distance": 400,
-                    "size": 40,
-                    "duration": 2,
-                    "opacity": 8,
-                    "speed": 3
-                },
-                "repulse": {
-                    "distance": 200,
-                    "duration": 0.4
-                },
-                "push": {
-                    "particles_nb": 4
-                },
-                "remove": {
-                    "particles_nb": 2
-                }
-            }
-        },
-        "retina_detect": true
-    });
-    
-    // 初始化周期选择器
-    initPeriodSelector();
-    
-    // 初始化详细数据表格
-    initDetailTable();
-    
-    // 绑定筛选事件
-    bindFilterEvents();
-    
-    // 初始化对比图表
-    setupComparisonCharts();
-    updateComparisonChart();
-    
-    // 初始化分页显示
-    const tableRows = document.querySelectorAll('#sales-table tbody tr');
-    const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
-    updatePageDisplay(tableRows, visibleRows);
-});
-
-// 详细数据表格初始化
-function initDetailTable() {
-    const tableBody = document.getElementById('table-body');
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    
-    salesData.models.forEach((model, index) => {
-        const row = document.createElement('tr');
-        
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${model}</td>
-            <td>${salesData.modelTypes[model]}</td>
-            <td>${salesData.sales[index].toLocaleString()}</td>
-            <td class="${salesData.yearOnYear[model].startsWith('+') ? 'positive' : 'negative'}">${salesData.yearOnYear[model]}</td>
-            <td class="${salesData.monthOnMonth[model].startsWith('+') ? 'positive' : 'negative'}">${salesData.monthOnMonth[model]}</td>
-        `;
-        
-        tableBody.appendChild(row);
-    });
-}
-
-// 数据筛选功能
-function filterTable() {
-    const searchInput = document.getElementById('model-search').value.toLowerCase();
-    const typeFilter = document.getElementById('type-filter').value;
-    const tableRows = document.querySelectorAll('#sales-table tbody tr');
-    
-    tableRows.forEach(row => {
-        const model = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
-        const type = row.querySelector('td:nth-child(3)').textContent;
-        
-        const matchesSearch = model.includes(searchInput);
-        const matchesType = typeFilter === 'all' || 
-            (typeFilter === 'dm-i' && type === 'DM-i混动') ||
-            (typeFilter === 'ev' && type === 'EV纯电') ||
-            (typeFilter === 'ice' && type === '燃油车');
-        
-        row.style.display = matchesSearch && matchesType ? '' : 'none';
-    });
-}
-
-// 绑定搜索和筛选事件
-function bindFilterEvents() {
-    const searchInput = document.getElementById('model-search');
-    const typeFilter = document.getElementById('type-filter');
-    
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            filterTable();
-            currentPage = 1;
-            const tableRows = document.querySelectorAll('#sales-table tbody tr');
-            const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
-            updatePageDisplay(tableRows, visibleRows);
-        });
-    }
-    
-    if (typeFilter) {
-        typeFilter.addEventListener('change', function() {
-            filterTable();
-            currentPage = 1;
-            const tableRows = document.querySelectorAll('#sales-table tbody tr');
-            const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
-            updatePageDisplay(tableRows, visibleRows);
-        });
-    }
-}
-
-// 表格分页功能
-let currentPage = 1;
-const itemsPerPage = 6;
-
-function changePage(direction) {
-    const tableRows = document.querySelectorAll('#sales-table tbody tr');
-    const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
-    const totalPages = Math.ceil(visibleRows.length / itemsPerPage);
-    
-    currentPage += direction;
-    if (currentPage < 1) currentPage = 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-    
-    updatePageDisplay(tableRows, visibleRows);
-}
-
-function updatePageDisplay(allRows, visibleRows) {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const totalPages = Math.ceil(visibleRows.length / itemsPerPage);
-    
-    // 更新页码显示
-    const pageIndicator = document.querySelector('.page-indicator');
-    if (pageIndicator) {
-        pageIndicator.textContent = `${currentPage} / ${totalPages || 1}`;
-    }
-    
-    // 显示当前页的行
-    allRows.forEach((row, index) => {
-        if (row.style.display !== 'none') {
-            const visibleIndex = visibleRows.indexOf(row);
-            row.style.display = (visibleIndex >= startIndex && visibleIndex < endIndex) ? '' : 'none';
-        }
-    });
-}
-
-// 数据导出功能
-function exportData(format) {
-    alert(`正在导出${format === 'excel' ? 'Excel' : 'PDF'}格式数据，请稍候...`);
-    // 实际项目中应该实现真正的导出功能
-    setTimeout(() => {
-        alert(`${format === 'excel' ? 'Excel' : 'PDF'}格式数据导出成功!`);
-    }, 1500);
-}
-
-// 设置对比图表
-function setupComparisonCharts() {
-    // 对比图表
-    const comparisonChart = echarts.init(document.getElementById('comparison-chart'));
-    const comparisonOption = {
-        title: {
-            text: '车型销量对比',
-            textStyle: {
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: 16
-            },
-            left: 'center'
-        },
-        legend: {
-            data: ['总销量'],
-            textStyle: {
-                color: 'rgba(255, 255, 255, 0.7)'
-            },
-            bottom: 5
-        },
-        radar: {
-            indicator: [
-                { name: '总销量', max: 120000 },
-                { name: '1月销量', max: 40000 },
-                { name: '2月销量', max: 40000 },
-                { name: '3月销量', max: 40000 },
-                { name: '同比增长', max: 30 }
-            ],
-            shape: 'polygon',
-            splitNumber: 5,
-            axisName: {
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: 12
-            },
-            splitLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                }
-            },
-            splitArea: {
-                show: true,
-                areaStyle: {
-                    color: ['rgba(255, 255, 255, 0.02)', 'rgba(255, 255, 255, 0.05)']
-                }
-            },
-            axisLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                }
-            }
-        },
-        series: []
-    };
-    comparisonChart.setOption(comparisonOption);
-
-    // 趋势对比图表
-    const trendComparisonChart = echarts.init(document.getElementById('trend-comparison-chart'));
-    const trendComparisonOption = {
-        title: {
-            text: '月度销量趋势对比',
-            textStyle: {
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: 16
-            },
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-                type: 'shadow'
-            }
-        },
-        legend: {
-            textStyle: {
-                color: 'rgba(255, 255, 255, 0.7)'
-            },
-            bottom: 5
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '15%',
+            bottom: '3%',
             top: '15%',
             containLabel: true
         },
         xAxis: {
             type: 'category',
-            data: ['1月', '2月', '3月'],
+            boundaryGap: false,
+            data: [],
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.2)'
                 }
             },
-            axisTick: {
-                show: false
-            },
             axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)'
+                color: 'rgba(255, 255, 255, 0.7)'
             }
         },
         yAxis: {
             type: 'value',
-            name: '销量',
             axisLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.2)'
                 }
             },
-            axisTick: {
-                show: false
-            },
             axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)'
+                color: 'rgba(255, 255, 255, 0.7)',
+                formatter: function(value) {
+                    return value / 1000 + 'k';
+                }
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.1)'
+                    color: 'rgba(255, 255, 255, 0.05)'
                 }
             }
         },
         series: []
     };
+    
+    trendChart.setOption(trendOption);
+    
+    // Responsive resize
+    window.addEventListener('resize', function() {
+        mainChart.resize();
+        pieChart.resize();
+        trendChart.resize();
+    });
+    
+    // Initialize comparison charts
+    const comparisonChart = echarts.init(document.getElementById('comparison-chart'));
+    const trendComparisonChart = echarts.init(document.getElementById('trend-comparison-chart'));
+    
+    // Initial chart update with default data
+    updateAllCharts("2024-Q1");
+    
+    // Store chart instances for future reference
+    window.chartInstances = {
+        mainChart,
+        pieChart,
+        trendChart,
+        comparisonChart,
+        trendComparisonChart
+    };
+}
+
+// Update all charts with period data
+function updateAllCharts(period) {
+    const { mainChart, pieChart, trendChart } = window.chartInstances;
+    const periodData = allPeriodsData[period];
+    
+    if (!periodData) return;
+    
+    // Update main chart
+    const mainOption = mainChart.getOption();
+    mainOption.yAxis[0].data = periodData.models;
+    mainOption.series[0].data = periodData.sales;
+    
+    // Add background bars with same value
+    const backgroundData = periodData.sales.map(() => 120000);
+    mainOption.series[1].data = backgroundData;
+    
+    mainChart.setOption(mainOption, true);
+    
+    // Update pie chart
+    const pieOption = pieChart.getOption();
+    const pieData = Object.entries(periodData.types).map(([name, value]) => {
+        return {
+            name,
+            value
+        };
+    });
+    
+    pieOption.series[0].data = pieData;
+    pieOption.series[0].itemStyle.borderColor = 'rgba(25, 32, 65, 0.7)';
+    
+    // Set distinct colors for pie chart segments
+    pieOption.series[0].data[0].itemStyle = {
+        color: '#00a854'
+    };
+    pieOption.series[0].data[1].itemStyle = {
+        color: '#1976d2'
+    };
+    pieOption.series[0].data[2].itemStyle = {
+        color: '#ff4081'
+    };
+    
+    pieChart.setOption(pieOption, true);
+    
+    // Update trend chart
+    const trendOption = trendChart.getOption();
+    const months = Object.keys(periodData.monthlyTrend);
+    const series = [];
+    
+    // Get top 5 models for trend chart
+    const top5Models = periodData.models.slice(0, 5);
+    
+    trendOption.legend.data = top5Models;
+    trendOption.xAxis.data = months;
+    trendOption.series = top5Models.map((model, index) => {
+        const monthlyData = months.map(month => periodData.monthlyTrend[month][index]);
+        
+        return {
+            name: model,
+            type: 'line',
+            data: monthlyData,
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+                width: 3
+            },
+            areaStyle: {
+                opacity: 0.1
+            }
+        };
+    });
+    
+    // Set distinct colors for trend lines
+    const colors = ['#00e676', '#2979ff', '#ff4081', '#ffab00', '#00b0ff'];
+    trendOption.color = colors;
+    
+    trendChart.setOption(trendOption, true);
+    
+    // Update comparison charts if they exist
+    updateComparisonChart();
+    
+    // Update Chart.js charts if they exist
+    if (window.chartInstances.chartjsComparison) {
+        setupChartJsBarChart();
+    }
+    
+    if (window.chartInstances.chartjsRadar) {
+        setupChartJsRadarChart();
+    }
+}
+
+// Refresh individual chart
+function refreshChart(chartId) {
+    // Special handling for Chart.js charts
+    if (chartId === 'chartjs-comparison') {
+        refreshChartJs('bar');
+        return;
+    } else if (chartId === 'chartjs-radar') {
+        refreshChartJs('radar');
+        return;
+    }
+
+    // Handle ECharts instances
+    const chart = echarts.getInstanceByDom(document.getElementById(chartId));
+    if (chart) {
+        chart.clear();
+        
+        const activePeriod = document.querySelector('.period-option.active').getAttribute('data-period');
+        updateAllCharts(activePeriod);
+        
+        // Add animation effect
+        const chartElement = document.getElementById(chartId);
+        chartElement.style.animation = 'fadeIn 0.5s';
+        setTimeout(() => {
+            chartElement.style.animation = '';
+        }, 500);
+    }
+}
+
+// Main initialization function
+function initApp() {
+    // Only initialize if DOM is fully loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeComponents);
+    } else {
+        initializeComponents();
+    }
+}
+
+// Initialize all components
+function initializeComponents() {
+    initPageLoader();
+    initParticles();
+    initPeriodSelector();
+    initScrollAnimations();
+    initScrollSpy();
+    // Initialize chart instances first
+    initChartInstances();
+    // Then setup charts
+    setupComparisonCharts();
+    setupChartJsComparison();
+    initDetailTable();
+    bindFilterEvents();
+    updateAllCharts('2024-Q1');
+    
+    // Add window resize handler for all charts
+    window.addEventListener('resize', function() {
+        // Resize ECharts instances
+        Object.keys(window.chartInstances).forEach(key => {
+            const chart = window.chartInstances[key];
+            if (chart && typeof chart.resize === 'function') {
+                chart.resize();
+            }
+        });
+    });
+    
+    // Remove loader after everything is initialized
+    setTimeout(() => {
+        document.getElementById('page-loader').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('page-loader').style.display = 'none';
+        }, 500);
+    }, 800);
+}
+
+// Start app
+initApp();
+
+// Page loader
+function initPageLoader() {
+    window.addEventListener('load', function() {
+        const loader = document.getElementById('page-loader');
+        setTimeout(() => {
+            loader.style.opacity = '0';
+            loader.style.visibility = 'hidden';
+        }, 1000);
+    });
+}
+
+// Initialize particles background
+function initParticles() {
+    particlesJS('particles-js', {
+        particles: {
+            number: { value: 80, density: { enable: true, value_area: 800 } },
+            color: { value: "#ffffff" },
+            shape: {
+                type: "circle",
+                stroke: { width: 0, color: "#000000" },
+                polygon: { nb_sides: 5 }
+            },
+            opacity: {
+                value: 0.2,
+                random: true,
+                anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false }
+            },
+            size: {
+                value: 3,
+                random: true,
+                anim: { enable: false, speed: 40, size_min: 0.1, sync: false }
+            },
+            line_linked: {
+                enable: true,
+                distance: 150,
+                color: "#00a854",
+                opacity: 0.2,
+                width: 1
+            },
+            move: {
+                enable: true,
+                speed: 1,
+                direction: "none",
+                random: true,
+                straight: false,
+                out_mode: "out",
+                bounce: false,
+                attract: { enable: false, rotateX: 600, rotateY: 1200 }
+            }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: {
+                onhover: { enable: true, mode: "grab" },
+                onclick: { enable: true, mode: "push" },
+                resize: true
+            },
+            modes: {
+                grab: { distance: 140, line_linked: { opacity: 0.3 } },
+                bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 },
+                repulse: { distance: 200, duration: 0.4 },
+                push: { particles_nb: 4 },
+                remove: { particles_nb: 2 }
+            }
+        },
+        retina_detect: true
+    });
+}
+
+// Initialize period selector
+function initPeriodSelector() {
+    const periodOptions = document.querySelectorAll('.period-option');
+    let currentPeriod = "2024-Q1";
+    
+    periodOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove active class from all options
+            periodOptions.forEach(opt => opt.classList.remove('active'));
+            
+            // Add active class to clicked option
+            this.classList.add('active');
+            
+            // Get selected period
+            const period = this.getAttribute('data-period');
+            currentPeriod = period;
+            
+            // Update page title
+            updatePageTitle(period);
+            
+            // Update all charts with the new period data
+            updateAllCharts(period);
+            
+            // Update KPIs
+            updateKPIs(period);
+            
+            // Update detail table
+            filterTable();
+        });
+    });
+}
+
+// Initialize scroll animations
+function initScrollAnimations() {
+    // Use Intersection Observer API for better performance
+    if ('IntersectionObserver' in window) {
+        const animationObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const el = entry.target;
+                    el.classList.add('animated');
+                    
+                    // Use data attributes for animation if present
+                    const animation = el.dataset.animation || 'fadeInUp';
+                    const delay = el.dataset.delay || 0;
+                    
+                    el.style.animationDelay = `${delay}s`;
+                    el.style.animationName = animation;
+                    
+                    // Stop observing after animation is triggered
+                    animationObserver.unobserve(el);
+                }
+            });
+        }, {
+            root: null,
+            threshold: 0.2,
+            rootMargin: '-20% 0px'
+        });
+        
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            animationObserver.observe(el);
+        });
+    } else {
+        // Fallback for browsers that don't support IntersectionObserver
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            el.classList.add('animated');
+        });
+    }
+}
+
+// Initialize scroll spy for navigation
+function initScrollSpy() {
+    const sections = document.querySelectorAll('.section');
+    const navDots = document.querySelectorAll('.nav-dot');
+    
+    window.addEventListener('scroll', function() {
+        const scrollPosition = window.pageYOffset + window.innerHeight / 3;
+        
+        sections.forEach((section, index) => {
+            const sectionTop = section.offsetTop;
+            const sectionBottom = sectionTop + section.offsetHeight;
+            
+            if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                navDots.forEach(dot => dot.classList.remove('active'));
+                navDots[index].classList.add('active');
+            }
+        });
+    });
+}
+
+// Initialize comparison charts
+function setupComparisonCharts() {
+    const comparisonChart = window.chartInstances.comparisonChart;
+    const trendComparisonChart = window.chartInstances.trendComparisonChart;
+    
+    // Bar comparison chart
+    const comparisonOption = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: [],
+            textStyle: {
+                color: 'rgba(255, 255, 255, 0.7)'
+            },
+            top: 0
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '15%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: ['总销量'],
+            axisLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.2)'
+                }
+            },
+            axisLabel: {
+                color: 'rgba(255, 255, 255, 0.7)'
+            }
+        },
+        yAxis: {
+            type: 'value',
+            axisLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.2)'
+                }
+            },
+            axisLabel: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                formatter: function(value) {
+                    return value / 1000 + 'k';
+                }
+            },
+            splitLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.05)'
+                }
+            }
+        },
+        series: []
+    };
+    
+    comparisonChart.setOption(comparisonOption);
+    
+    // Trend comparison chart
+    const trendComparisonOption = trendComparisonChart.getOption();
+    const months = Object.keys(allPeriodsData["2024-Q1"].monthlyTrend);
+    
+    trendComparisonOption.legend.data = months;
+    trendComparisonOption.xAxis.data = months;
+    trendComparisonOption.color = ['#00e676', '#2979ff', '#ff4081', '#ffab00', '#00b0ff'];
+    
+    trendComparisonOption.series = months.map((month, index) => {
+        const data = [];
+        const periods = Object.keys(allPeriodsData);
+        
+        periods.forEach((period, periodIndex) => {
+            const modelIndex = allPeriodsData[period].models.indexOf(allPeriodsData["2024-Q1"].models[index]);
+            const sales = modelIndex !== -1 ? allPeriodsData[period].sales[modelIndex] : 0;
+            data.push(sales);
+        });
+        
+        return {
+            name: month,
+            type: 'line',
+            data: data,
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+                width: 3
+            },
+            areaStyle: {
+                opacity: 0.1
+            }
+        };
+    });
+    
     trendComparisonChart.setOption(trendComparisonOption);
-
-    // 添加到charts引用
-    charts['comparison-chart'] = comparisonChart;
-    charts['trend-comparison-chart'] = trendComparisonChart;
-
-    // 窗口调整大小事件
+    
+    // Responsive resize
     window.addEventListener('resize', function() {
         comparisonChart.resize();
         trendComparisonChart.resize();
     });
-}
-
-// 车型对比功能
-function updateComparisonChart() {
-    const model1Element = document.getElementById('model-select-1');
-    const model2Element = document.getElementById('model-select-2');
-    const model3Element = document.getElementById('model-select-3');
     
-    if (!model1Element || !model2Element || !model3Element) return;
-    
-    const model1 = model1Element.value;
-    const model2 = model2Element.value;
-    const model3 = model3Element.value;
-    
-    const selectedModels = [model1, model2, model3];
-    const uniqueModels = [...new Set(selectedModels)]; // 去重
-    
-    // 获取当前周期的月份名称（处理不同周期的月份差异）
-    const monthKeys = Object.keys(salesData.monthlyTrend);
-    
-    // 更新雷达图数据
-    const comparisonData = uniqueModels.map(model => {
-        const index = salesData.models.indexOf(model);
-        // 处理同比增长率的数字值（去掉+和%）
-        let yearOnYearValue = salesData.yearOnYear[model];
-        if (yearOnYearValue === '新上市') {
-            yearOnYearValue = 0;
-        } else {
-            yearOnYearValue = parseFloat(yearOnYearValue.replace(/%|\+/g, ''));
-        }
-        
-        return {
-            name: model,
-            value: [
-                salesData.sales[index],
-                salesData.monthlyTrend[monthKeys[0]][index],
-                salesData.monthlyTrend[monthKeys[1]][index],
-                salesData.monthlyTrend[monthKeys[2]][index],
-                yearOnYearValue
-            ]
-        };
-    });
-    
-    const radarSeries = [{
-        type: 'radar',
-        data: comparisonData.map((item, i) => {
-            return {
-                value: item.value,
-                name: item.name,
-                areaStyle: {
-                    opacity: 0.2
-                },
-                lineStyle: {
-                    width: 2
-                }
-            };
-        })
-    }];
-    
-    // 更新趋势图数据
-    const trendSeries = uniqueModels.map(model => {
-        const index = salesData.models.indexOf(model);
-        return {
-            name: model,
-            type: 'line',
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 8,
-            data: [
-                salesData.monthlyTrend[monthKeys[0]][index],
-                salesData.monthlyTrend[monthKeys[1]][index],
-                salesData.monthlyTrend[monthKeys[2]][index]
-            ]
-        };
-    });
-    
-    // 更新图表
-    charts['comparison-chart'].setOption({
-        legend: {
-            data: uniqueModels
-        },
-        series: radarSeries
-    });
-    
-    charts['trend-comparison-chart'].setOption({
-        legend: {
-            data: uniqueModels
-        },
-        xAxis: {
-            data: monthKeys
-        },
-        series: trendSeries
-    });
-}
-
-// 周期选择器功能
-function initPeriodSelector() {
-    const periodOptions = document.querySelectorAll('.period-option');
-    
-    periodOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            // 移除所有active类
-            periodOptions.forEach(opt => opt.classList.remove('active'));
-            
-            // 添加active类到当前点击的选项
-            this.classList.add('active');
-            
-            // 获取选择的周期
-            const period = this.getAttribute('data-period');
-            
-            // 更新所有图表和数据
-            updateAllCharts(period);
-        });
-    });
-}
-
-// 更新页面标题
-function updatePageTitle() {
-    const titleMap = {
-        "2024-Q1": "2024年第一季度",
-        "2023-Q4": "2023年第四季度",
-        "2023-Q3": "2023年第三季度",
-        "2023-Q2": "2023年第二季度"
-    };
-    
-    const titleElement = document.querySelector('.header h1');
-    if (titleElement) {
-        titleElement.innerHTML = `比亚迪汽车<br>${titleMap[currentPeriod]}销量排行榜`;
-    }
-}
-
-// 更新KPI数据
-function updateKPIs() {
-    // 重新计算总销量和混动占比
-    const updatedTotalSales = salesData.sales.reduce((a, b) => a + b, 0);
-    const updatedHybridSales = salesData.sales.reduce((total, sales, index) => {
-        return salesData.modelTypes[salesData.models[index]] === 'DM-i混动' ? total + sales : total;
-    }, 0);
-    const updatedHybridPercent = (updatedHybridSales / updatedTotalSales * 100).toFixed(1);
-    
-    // 更新KPI数值
-    new CountUp('total-sales', 0, updatedTotalSales).start();
-    new CountUp('hybrid-percent', 0, updatedHybridPercent, {
-        suffix: '%'
-    }).start();
-    
-    // 更新热销车型信息
-    const topModelIndex = salesData.sales.indexOf(Math.max(...salesData.sales));
-    const topModel = salesData.models[topModelIndex];
-    const topModelSales = salesData.sales[topModelIndex];
-    
-    const hotModelElement = document.querySelector('.kpi-card:nth-child(2) .kpi-value');
-    const hotModelSalesElement = document.querySelector('.kpi-card:nth-child(2) .kpi-change');
-    
-    if (hotModelElement && hotModelSalesElement) {
-        hotModelElement.textContent = topModel;
-        hotModelSalesElement.textContent = `${topModelSales.toLocaleString()} 辆`;
-    }
-}
-
-// 刷新所有图表
-function refreshAllCharts() {
-    if (charts['main-chart']) {
-        charts['main-chart'].setOption({
-            yAxis: {
-                data: salesData.models.slice().reverse()
-            },
-            series: [{
-                data: salesData.sales.slice().reverse()
-            }]
-        });
-    }
-    
-    if (charts['pie-chart']) {
-        charts['pie-chart'].setOption({
-            series: [{
-                data: [
-                    { 
-                        value: salesData.types['DM-i混动'], 
-                        name: 'DM-i混动',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#3eecac'},
-                            {offset: 1, color: '#3ba272'}
-                        ])}
-                    },
-                    { 
-                        value: salesData.types['EV纯电'], 
-                        name: 'EV纯电',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#ee74e1'},
-                            {offset: 1, color: '#9a60b4'}
-                        ])}
-                    },
-                    { 
-                        value: salesData.types['燃油车'], 
-                        name: '燃油车',
-                        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: '#fac858'},
-                            {offset: 1, color: '#fc8452'}
-                        ])}
-                    }
-                ]
-            }]
-        });
-    }
-    
-    // 获取当前周期的月份名称
-    const monthKeys = Object.keys(salesData.monthlyTrend);
-    
-    if (charts['trend-chart']) {
-        charts['trend-chart'].setOption({
-            legend: {
-                data: monthKeys
-            },
-            xAxis: {
-                data: salesData.models.slice(0, 5)
-            },
-            series: monthKeys.map((month, index) => {
-                return {
-                    name: month,
-                    type: 'bar',
-                    emphasis: {
-                        focus: 'series'
-                    },
-                    data: salesData.monthlyTrend[month].slice(0, 5),
-                    itemStyle: {
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            {offset: 0, color: themes.color[index * 3 % themes.color.length]},
-                            {offset: 1, color: themes.color[(index * 3 + 1) % themes.color.length]}
-                        ])
-                    }
-                };
-            })
-        });
-    }
-    
-    // 更新对比图表
+    // Initial update
     updateComparisonChart();
 }
 
-// 页面加载完成后隐藏加载动画
-window.addEventListener('load', function() {
-    // 模拟加载延迟，确保动画效果显示
-    setTimeout(function() {
-        const loader = document.getElementById('page-loader');
-        if (loader) {
-            loader.style.opacity = '0';
-            loader.style.visibility = 'hidden';
-        }
-    }, 1500); // 1.5秒后隐藏加载动画
+// Update comparison charts
+function updateComparisonChart() {
+    const { comparisonChart, trendComparisonChart } = window.chartInstances;
+    const activePeriod = document.querySelector('.period-option.active').getAttribute('data-period');
+    const periodData = allPeriodsData[activePeriod];
     
-    // 初始化滚动动画
-    initScrollAnimations();
-});
-
-// 初始化滚动检测
-function initScrollAnimations() {
-    const animatedElements = document.querySelectorAll('.animate-on-scroll');
+    if (!periodData) return;
     
-    // 检查元素是否在视口中
-    function checkInView() {
-        animatedElements.forEach(element => {
-            const elementTop = element.getBoundingClientRect().top;
-            const elementVisible = 150; // 元素距离视口顶部的距离阈值
-            
-            if (elementTop < window.innerHeight - elementVisible) {
-                const animation = element.dataset.animation || 'fadeIn';
-                const delay = element.dataset.delay || 0;
-                
-                element.classList.add('animated');
-                
-                // 通过设置延迟来控制动画序列
-                element.style.transitionDelay = `${delay}s`;
-            }
-        });
-    }
+    // Get selected models
+    const model1 = document.getElementById('model-select-1').value;
+    const model2 = document.getElementById('model-select-2').value;
+    const model3 = document.getElementById('model-select-3').value;
     
-    // 初始检查
-    checkInView();
+    const selectedModels = [model1, model2, model3];
     
-    // 滚动时检查
-    window.addEventListener('scroll', checkInView);
-}
-
-// 滚动监听实现
-function initScrollSpy() {
-    const sections = ['.hero-section', '.dashboard', '.detail-section', '.compare-section'];
-    const navDots = document.querySelectorAll('.nav-dot');
+    // Update bar comparison chart
+    const comparisonOption = comparisonChart.getOption();
     
-    window.addEventListener('scroll', function() {
-        let current = '';
+    comparisonOption.legend.data = selectedModels;
+    comparisonOption.series = selectedModels.map((model, index) => {
+        const modelIndex = periodData.models.indexOf(model);
+        const sales = modelIndex !== -1 ? periodData.sales[modelIndex] : 0;
         
-        sections.forEach((section, index) => {
-            const element = document.querySelector(section);
-            if (element) {
-                const elementTop = element.getBoundingClientRect().top;
-                
-                if (elementTop < window.innerHeight / 2) {
-                    current = section;
-                    
-                    // 更新导航点状态
-                    navDots.forEach(dot => dot.classList.remove('active'));
-                    navDots[index].classList.add('active');
+        return {
+            name: model,
+            type: 'bar',
+            barGap: 0,
+            data: [sales],
+            itemStyle: {
+                borderRadius: [4, 4, 0, 0]
+            },
+            label: {
+                show: true,
+                position: 'top',
+                color: 'rgba(255, 255, 255, 0.7)',
+                formatter: function(params) {
+                    return params.value.toLocaleString();
                 }
             }
+        };
+    });
+    
+    // Set distinct colors for comparison chart bars
+    const colors = ['#00e676', '#2979ff', '#ff4081', '#ffab00', '#00b0ff'];
+    comparisonOption.color = colors;
+    
+    comparisonChart.setOption(comparisonOption, true);
+    
+    // Update trend comparison chart
+    const trendComparisonOption = trendComparisonChart.getOption();
+    const months = Object.keys(periodData.monthlyTrend);
+    
+    trendComparisonOption.legend.data = selectedModels;
+    trendComparisonOption.xAxis.data = months;
+    trendComparisonOption.color = colors;
+    
+    trendComparisonOption.series = selectedModels.map((model, index) => {
+        const modelIndex = periodData.models.indexOf(model);
+        const monthlyData = modelIndex !== -1 
+            ? months.map(month => periodData.monthlyTrend[month][modelIndex])
+            : months.map(() => 0);
+        
+        return {
+            name: model,
+            type: 'line',
+            data: monthlyData,
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+                width: 3
+            },
+            areaStyle: {
+                opacity: 0.1
+            }
+        };
+    });
+    
+    trendComparisonChart.setOption(trendComparisonOption, true);
+}
+
+// Initialize data table
+function initDetailTable() {
+    // Initial table population
+    filterTable();
+    
+    // Bind search and filter events
+    bindFilterEvents();
+}
+
+// Table search and filtering
+function filterTable() {
+    const searchTerm = document.getElementById('model-search').value.toLowerCase();
+    const filterType = document.getElementById('type-filter').value;
+    const tableBody = document.getElementById('table-body');
+    const activePeriod = document.querySelector('.period-option.active').getAttribute('data-period');
+    const periodData = allPeriodsData[activePeriod];
+    
+    if (!periodData) return;
+    
+    // Clear table
+    tableBody.innerHTML = '';
+    
+    // Filter and sort data
+    const tableData = periodData.models.map((model, index) => {
+        return {
+            rank: index + 1,
+            model: model,
+            type: periodData.modelTypes[model],
+            sales: periodData.sales[index],
+            yearOnYear: periodData.yearOnYear[model],
+            monthOnMonth: periodData.monthOnMonth[model]
+        };
+    }).filter(item => {
+        // Apply search filter
+        const matchesSearch = item.model.toLowerCase().includes(searchTerm);
+        
+        // Apply type filter
+        const matchesType = filterType === 'all' || 
+            (filterType === 'dm-i' && item.type === 'DM-i混动') ||
+            (filterType === 'ev' && item.type === 'EV纯电') ||
+            (filterType === 'ice' && item.type === '燃油车');
+            
+        return matchesSearch && matchesType;
+    });
+    
+    // Store filtered rows for pagination
+    window.filteredRows = tableData;
+    
+    // Initialize pagination
+    window.currentPage = 1;
+    window.rowsPerPage = 10;
+    
+    // Display first page
+    displayTablePage();
+}
+
+// Display current page of table data
+function displayTablePage() {
+    const tableBody = document.getElementById('table-body');
+    const filteredRows = window.filteredRows || [];
+    const currentPage = window.currentPage || 1;
+    const rowsPerPage = window.rowsPerPage || 10;
+    
+    // Calculate page bounds
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    const visibleRows = filteredRows.slice(startIndex, endIndex);
+    
+    // Clear table
+    tableBody.innerHTML = '';
+    
+    // Add rows for current page
+    visibleRows.forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Apply styling for different types
+        let typeClass = '';
+        if (item.type === 'DM-i混动') typeClass = 'hybrid';
+        else if (item.type === 'EV纯电') typeClass = 'electric';
+        else if (item.type === '燃油车') typeClass = 'gasoline';
+        
+        // Create year-on-year and month-on-month change elements with proper styling
+        const yoyChange = item.yearOnYear.startsWith('+') 
+            ? `<span class="positive">${item.yearOnYear}</span>` 
+            : (item.yearOnYear === '新上市' 
+                ? `<span>${item.yearOnYear}</span>` 
+                : `<span class="negative">${item.yearOnYear}</span>`);
+                
+        const momChange = item.monthOnMonth.startsWith('+') 
+            ? `<span class="positive">${item.monthOnMonth}</span>` 
+            : `<span class="negative">${item.monthOnMonth}</span>`;
+        
+        // Populate row
+        row.innerHTML = `
+            <td>${item.rank}</td>
+            <td>${item.model}</td>
+            <td class="${typeClass}">${item.type}</td>
+            <td>${item.sales.toLocaleString()}</td>
+            <td>${yoyChange}</td>
+            <td>${momChange}</td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+    
+    // Update pagination display
+    updatePageDisplay(filteredRows.length, visibleRows.length);
+}
+
+// Bind filter and search events
+function bindFilterEvents() {
+    const searchInput = document.getElementById('model-search');
+    const typeFilter = document.getElementById('type-filter');
+    
+    // Add input event for search box
+    searchInput.addEventListener('input', filterTable);
+    
+    // Add change event for type filter
+    typeFilter.addEventListener('change', filterTable);
+}
+
+// Change page in pagination
+function changePage(direction) {
+    const currentPage = window.currentPage || 1;
+    const filteredRows = window.filteredRows || [];
+    const rowsPerPage = window.rowsPerPage || 10;
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    
+    // Calculate new page
+    let newPage = currentPage + direction;
+    
+    // Boundary check
+    if (newPage < 1) newPage = 1;
+    if (newPage > totalPages) newPage = totalPages;
+    
+    // Update current page
+    window.currentPage = newPage;
+    
+    // Update table display
+    displayTablePage();
+}
+
+// Update page indicator
+function updatePageDisplay(totalRows, visibleRows) {
+    const pageIndicator = document.querySelector('.page-indicator');
+    const currentPage = window.currentPage || 1;
+    const rowsPerPage = window.rowsPerPage || 10;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    
+    pageIndicator.textContent = `${currentPage} / ${totalPages > 0 ? totalPages : 1}`;
+}
+
+// Export data function
+function exportData(format) {
+    const activePeriod = document.querySelector('.period-option.active').getAttribute('data-period');
+    const periodName = activePeriod === '2024-Q1' ? '2024年第一季度' : 
+                       activePeriod === '2023-Q4' ? '2023年第四季度' : 
+                       activePeriod === '2023-Q3' ? '2023年第三季度' : '2023年第二季度';
+                       
+    // Show alert for demo purposes
+    alert(`导出${periodName}数据为${format === 'excel' ? 'Excel' : 'PDF'}格式`);
+    
+    // In a real implementation, this would generate and download the file
+}
+
+// Update page title based on selected period
+function updatePageTitle(period) {
+    const periodName = period === '2024-Q1' ? '2024年第一季度' : 
+                      period === '2023-Q4' ? '2023年第四季度' : 
+                      period === '2023-Q3' ? '2023年第三季度' : '2023年第二季度';
+                      
+    document.title = `比亚迪汽车 - ${periodName}销量数据分析`;
+}
+
+// Update KPIs with period data
+function updateKPIs(period = '2024-Q1') {
+    const periodData = allPeriodsData[period];
+    
+    if (!periodData) return;
+    
+    // Calculate total sales
+    const totalSales = periodData.sales.reduce((sum, sales) => sum + sales, 0);
+    
+    // Calculate hybrid percentage
+    const hybridSales = periodData.types['DM-i混动'] || 0;
+    const hybridPercent = Math.round((hybridSales / totalSales) * 100);
+    
+    // Update KPI displays with CountUp animation
+    const totalSalesEl = document.getElementById('total-sales');
+    const hybridPercentEl = document.getElementById('hybrid-percent');
+    
+    // Use CountUp for smooth animations
+    const totalSalesCounter = new CountUp('total-sales', 0, totalSales, 0, 2, {
+        useEasing: true,
+        useGrouping: true,
+        separator: ',',
+        decimal: '.'
+    });
+    
+    const hybridPercentCounter = new CountUp('hybrid-percent', 0, hybridPercent, 0, 1.5, {
+        useEasing: true,
+        useGrouping: true,
+        suffix: '%'
+    });
+    
+    // Start animations
+    if (!totalSalesCounter.error) {
+        totalSalesCounter.start();
+    } else {
+        totalSalesEl.textContent = totalSales.toLocaleString();
+    }
+    
+    if (!hybridPercentCounter.error) {
+        hybridPercentCounter.start();
+    } else {
+        hybridPercentEl.textContent = hybridPercent + '%';
+    }
+}
+
+// Utility function to generate gradient colors
+function getGradientColor(ctx, colorFrom, colorTo) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, colorFrom);
+    gradient.addColorStop(1, colorTo);
+    return gradient;
+}
+
+// Utility function to format large numbers
+function formatNumber(number) {
+    if (number >= 10000) {
+        return (number / 10000).toFixed(1) + '万';
+    } else if (number >= 1000) {
+        return (number / 1000).toFixed(1) + 'k';
+    }
+    return number.toString();
+}
+
+// Add CSS class utility
+function addClass(element, className) {
+    if (element.classList) {
+        element.classList.add(className);
+    } else {
+        element.className += ' ' + className;
+    }
+}
+
+// Remove CSS class utility
+function removeClass(element, className) {
+    if (element.classList) {
+        element.classList.remove(className);
+    } else {
+        element.className = element.className.replace(
+            new RegExp('(^|\\b)' + className.split(' ').join('|') + '(\\b|$)', 'gi'), ' '
+        );
+    }
+}
+
+// Toggle CSS class utility
+function toggleClass(element, className) {
+    if (element.classList) {
+        element.classList.toggle(className);
+    } else {
+        const classes = element.className.split(' ');
+        const existingIndex = classes.indexOf(className);
+        
+        if (existingIndex >= 0) {
+            classes.splice(existingIndex, 1);
+        } else {
+            classes.push(className);
+        }
+        
+        element.className = classes.join(' ');
+    }
+}
+
+// Add Chart.js implementation for model comparison
+function setupChartJsComparison() {
+    // First, check if we need to create the container
+    if (!document.querySelector('.chartjs-container')) {
+        const container = document.querySelector('.compare-section .container');
+        if (!container) return;
+        
+        const chartjsSection = document.createElement('div');
+        chartjsSection.className = 'chartjs-container';
+        chartjsSection.innerHTML = `
+            <h3 class="section-title">Chart.js 可视化</h3>
+            <div class="charts-grid">
+                <div class="card animate-on-scroll" data-animation="fadeIn">
+                    <div class="card-title">
+                        <span>车型销量对比 (Chart.js)</span>
+                        <button class="refresh" onclick="refreshChartJs('bar')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9 16H2V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            刷新
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartjs-comparison"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card animate-on-scroll" data-animation="fadeIn" data-delay="0.2">
+                    <div class="card-title">
+                        <span>车型类型分布 (Chart.js)</span>
+                        <button class="refresh" onclick="refreshChartJs('radar')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9 16H2V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            刷新
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartjs-radar"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(chartjsSection);
+    }
+    
+    // Setup bar chart
+    setupChartJsBarChart();
+    
+    // Setup radar chart
+    setupChartJsRadarChart();
+}
+
+// Setup bar chart comparing top models across periods
+function setupChartJsBarChart() {
+    // Get current period
+    const currentPeriod = document.querySelector('.period-option.active').getAttribute('data-period');
+    
+    // Get top 5 models for the current period
+    const topModels = allPeriodsData[currentPeriod].models.slice(0, 5);
+    
+    // Get data for all periods for these models
+    const datasets = [];
+    const periods = Object.keys(allPeriodsData);
+    
+    const colors = [
+        'rgba(0, 168, 84, 0.8)',   // Green
+        'rgba(25, 118, 210, 0.8)',  // Blue
+        'rgba(245, 124, 0, 0.8)',   // Orange
+        'rgba(156, 39, 176, 0.8)',  // Purple
+        'rgba(211, 47, 47, 0.8)'    // Red
+    ];
+    
+    // Create a dataset for each period
+    periods.forEach((period, index) => {
+        const data = [];
+        
+        // Get sales data for each top model in this period
+        topModels.forEach(model => {
+            const modelIndex = allPeriodsData[period].models.indexOf(model);
+            if (modelIndex !== -1) {
+                data.push(allPeriodsData[period].sales[modelIndex]);
+            } else {
+                data.push(0); // Model not found in this period
+            }
         });
+        
+        datasets.push({
+            label: period,
+            data: data,
+            backgroundColor: colors[index],
+            borderColor: colors[index].replace('0.8', '1'),
+            borderWidth: 1
+        });
+    });
+    
+    // Get the canvas element
+    const canvas = document.getElementById('chartjs-comparison');
+    if (!canvas) return;
+    
+    // Check if Chart instance already exists and destroy it
+    if (window.chartInstances.chartjsComparison instanceof Chart) {
+        window.chartInstances.chartjsComparison.destroy();
+    }
+    
+    // Create the Chart.js chart
+    window.chartInstances.chartjsComparison = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: topModels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                title: {
+                    display: true,
+                    text: '车型销量周期对比',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    font: {
+                        size: 16
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            }
+        }
     });
 }
 
-// 更新所有图表和数据
-function updateAllCharts(period) {
-    currentPeriod = period;
-    salesData = allPeriodsData[currentPeriod];
+// Setup radar chart showing vehicle type distribution
+function setupChartJsRadarChart() {
+    // Get the canvas element
+    const canvas = document.getElementById('chartjs-radar');
+    if (!canvas) return;
     
-    // 更新页面标题
-    updatePageTitle();
+    // Check if Chart instance already exists and destroy it
+    if (window.chartInstances.chartjsRadar instanceof Chart) {
+        window.chartInstances.chartjsRadar.destroy();
+    }
     
-    // 重新计算KPI数据
-    updateKPIs();
+    // Prepare data
+    const periods = Object.keys(allPeriodsData);
+    const vehicleTypes = ['DM-i混动', 'EV纯电', '燃油车'];
     
-    // 刷新所有图表
-    refreshAllCharts();
+    const datasets = periods.map((period, index) => {
+        const typeData = allPeriodsData[period].types;
+        
+        // Make sure we have all three types, with 0 as fallback
+        const data = [
+            typeData['DM-i混动'] || 0,
+            typeData['EV纯电'] || 0,
+            typeData['燃油车'] || 0
+        ];
+        
+        // Normalize to percentages
+        const total = data.reduce((sum, val) => sum + val, 0);
+        const percentages = data.map(val => Math.round((val / total) * 100));
+        
+        const colors = [
+            'rgba(0, 168, 84, 0.7)',
+            'rgba(25, 118, 210, 0.7)',
+            'rgba(245, 124, 0, 0.7)',
+            'rgba(156, 39, 176, 0.7)',
+            'rgba(211, 47, 47, 0.7)'
+        ];
+        
+        return {
+            label: period,
+            data: percentages,
+            fill: true,
+            backgroundColor: colors[index].replace('0.7', '0.2'),
+            borderColor: colors[index],
+            pointBackgroundColor: colors[index],
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: colors[index]
+        };
+    });
     
-    // 更新详细数据表格
-    initDetailTable();
+    // Create the radar chart
+    window.chartInstances.chartjsRadar = new Chart(canvas, {
+        type: 'radar',
+        data: {
+            labels: vehicleTypes,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: {
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    pointLabels: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        backdropColor: 'transparent',
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: '各周期车型类型分布对比 (%)',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    font: {
+                        size: 16
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Refresh Chart.js chart by type (bar or radar)
+function refreshChartJs(type) {
+    if (type === 'radar') {
+        setupChartJsRadarChart();
+    } else {
+        setupChartJsBarChart();
+    }
+}
+
+// Update window.chartInstances on init
+function initChartInstances() {
+    window.chartInstances = {
+        mainChart: echarts.init(document.getElementById('main-chart')),
+        pieChart: echarts.init(document.getElementById('pie-chart')),
+        trendChart: echarts.init(document.getElementById('trend-chart')),
+        comparisonChart: echarts.init(document.getElementById('comparison-chart')),
+        trendComparisonChart: echarts.init(document.getElementById('trend-comparison-chart')),
+        chartjsComparison: null, // Will be initialized later
+        chartjsRadar: null       // Will be initialized later
+    };
 } 
