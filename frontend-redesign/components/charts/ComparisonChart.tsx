@@ -1,12 +1,23 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useSales } from '@/contexts/SalesContext';
 import BaseChart from './BaseChart';
 import { getChartColors } from '@/utils/helpers';
 
 export default function ComparisonChart() {
   const { currentData, compareModels, currentPeriod } = useSales();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Re-render the chart when compareModels changes
+  useEffect(() => {
+    // Add a small delay to ensure data is ready
+    const timer = setTimeout(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [compareModels, currentPeriod]);
   
   const chartOptions = useMemo(() => {
     const { models, sales, monthlyTrend } = currentData;
@@ -85,8 +96,8 @@ export default function ComparisonChart() {
     return {
       // Basic grid layout with two charts
       grid: [
-        { left: '5%', right: '55%', bottom: '5%', top: '5%', containLabel: true },
-        { left: '55%', right: '5%', bottom: '5%', top: '5%', containLabel: true },
+        { left: '5%', right: '55%', bottom: '15%', top: '5%', containLabel: true },
+        { left: '55%', right: '5%', bottom: '15%', top: '5%', containLabel: true },
       ],
       
       // Tooltips
@@ -97,7 +108,7 @@ export default function ComparisonChart() {
       // Legend
       legend: {
         data: comparisonData.map(m => m?.name || ''),
-        bottom: 10,
+        bottom: 0,
         textStyle: {
           color: 'rgba(255, 255, 255, 0.7)',
         },
@@ -199,13 +210,34 @@ export default function ComparisonChart() {
     };
   }, [currentData, compareModels, currentPeriod]);
 
+  // Add refresh button
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
-    <div className="card">
+    <div className="card overflow-hidden">
       <div className="card-title">
-        <span>车型对比分析</span>
+        <span className="flex items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
+            <path d="M21 3v5h-5M3 21v-5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M17 6.3A10 10 0 114.3 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          车型对比分析
+        </span>
+        <button 
+          className="flex items-center gap-1 text-sm bg-white/5 hover:bg-white/10 py-1 px-3 rounded-full transition-colors" 
+          onClick={handleRefresh}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9 16H2V9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          刷新
+        </button>
       </div>
-      <div className="h-full">
-        <BaseChart options={chartOptions} className="h-[500px]" />
+      <div className="w-full h-[550px]">
+        <BaseChart key={`comparison-chart-${refreshKey}`} options={chartOptions} className="h-[550px]" />
       </div>
     </div>
   );

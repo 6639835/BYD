@@ -1325,6 +1325,14 @@ function updateKPIs(period = '2024-Q1') {
 
 // Utility function to generate gradient colors
 function getGradientColor(ctx, colorFrom, colorTo) {
+    // Validate color values
+    if (!colorFrom || typeof colorFrom !== 'string' || colorFrom === '0') {
+        colorFrom = '#00a854'; // Default primary color if invalid
+    }
+    if (!colorTo || typeof colorTo !== 'string' || colorTo === '0') {
+        colorTo = '#1976d2'; // Default secondary color if invalid
+    }
+    
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, colorFrom);
     gradient.addColorStop(1, colorTo);

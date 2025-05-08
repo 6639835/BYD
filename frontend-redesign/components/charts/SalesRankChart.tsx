@@ -96,7 +96,13 @@ export default function SalesRankChart() {
               
               // Calculate color index based on rank
               const normalizedIndex = params.dataIndex / (xAxisData.length - 1);
-              const colors = colorStops[Math.floor(normalizedIndex * (colorStops.length - 1))];
+              // Use Math.min to ensure we don't go beyond array bounds
+              const colorIndex = Math.min(Math.floor(normalizedIndex * (colorStops.length - 1)), colorStops.length - 2);
+              const colors = colorStops[colorIndex];
+              
+              // Ensure we have valid color strings (not just '0')
+              const color1 = typeof colors[1] === 'string' && colors[1] !== '0' ? colors[1] : '#00a854';
+              const color2 = typeof colors[0] === 'string' && colors[0] !== '0' ? colors[0] : '#1976d2';
               
               return {
                 type: 'linear',
@@ -107,11 +113,11 @@ export default function SalesRankChart() {
                 colorStops: [
                   {
                     offset: 0,
-                    color: colors[1], // 0% position color
+                    color: color1, // 0% position color
                   },
                   {
                     offset: 1,
-                    color: colors[0], // 100% position color
+                    color: color2, // 100% position color
                   },
                 ],
               };

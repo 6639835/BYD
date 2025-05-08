@@ -26,6 +26,11 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
   }
+  
+  body {
+    background-image: radial-gradient(circle at 80% 20%, #121a35 0%, #0a1229 50%, #080f1f 100%);
+    background-attachment: fixed;
+  }
 }
 
 @layer components {
@@ -39,35 +44,59 @@
 
   .section-title {
     @apply text-3xl md:text-4xl font-bold mb-10 md:mb-16 text-center relative;
-    background: linear-gradient(90deg, #00a854, #1976d2);
+    background: linear-gradient(90deg, #00e676, #00a854, #1976d2);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(0, 168, 84, 0.2);
   }
 
   .section-title::after {
     content: '';
-    @apply absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-primary rounded-full;
+    @apply absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-primary to-secondary rounded-full;
   }
 
   .btn {
     @apply px-6 py-3 rounded-full font-medium transition-all duration-300 text-white
-           flex items-center justify-center gap-2 outline-none focus:ring-2 focus:ring-offset-2;
+           flex items-center justify-center gap-2 outline-none focus:ring-2 focus:ring-offset-2
+           relative overflow-hidden shadow-lg hover:shadow-xl;
+  }
+  
+  .btn::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+  }
+  
+  .btn:hover::before {
+    @apply opacity-100;
   }
 
   .btn-primary {
-    @apply bg-primary hover:bg-primary-dark focus:ring-primary;
+    @apply bg-gradient-to-r from-primary to-primary-dark hover:translate-y-[-2px] focus:ring-primary;
   }
 
   .btn-secondary {
-    @apply bg-secondary hover:bg-secondary-dark focus:ring-secondary;
+    @apply bg-gradient-to-r from-secondary to-secondary-dark hover:translate-y-[-2px] focus:ring-secondary;
   }
 
   .btn-ghost {
-    @apply bg-transparent border border-white/20 hover:bg-white/10 focus:ring-white/30;
+    @apply bg-transparent border border-white/20 backdrop-blur-sm hover:bg-white/10 hover:border-white/30 focus:ring-white/30;
   }
 
   .card {
-    @apply bg-card border border-border rounded-2xl p-6 shadow-lg backdrop-blur-lg transition-all;
+    @apply bg-card/90 border border-border rounded-2xl p-6 shadow-lg backdrop-blur-lg transition-all duration-300
+           hover:shadow-xl hover:border-border-active relative overflow-hidden;
+    background-image: linear-gradient(145deg, rgba(25, 32, 65, 0.5), rgba(18, 26, 53, 0.8));
+  }
+  
+  .card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 transition-opacity duration-300;
+    pointer-events: none;
+  }
+  
+  .card:hover::before {
+    @apply opacity-100;
   }
 
   .card-title {
@@ -82,15 +111,54 @@
     @apply w-3 h-3 rounded-full bg-white/20 transition-all duration-300 cursor-pointer
            relative before:opacity-0 before:absolute before:content-[attr(data-label)]
            before:right-7 before:whitespace-nowrap before:px-3 before:py-1.5 
-           before:rounded-lg before:bg-dark-surface before:text-white before:text-xs
-           before:transition-all before:duration-300;
+           before:rounded-lg before:bg-dark-surface/90 before:backdrop-blur-lg before:text-white before:text-xs
+           before:transition-all before:duration-300 before:border before:border-border
+           before:shadow-lg;
   }
 
   .nav-dot.active, .nav-dot:hover {
-    @apply bg-primary shadow-glow;
+    @apply bg-primary shadow-glow scale-125;
   }
 
   .nav-dot:hover::before {
+    @apply opacity-100;
+  }
+  
+  .data-table {
+    @apply w-full border-collapse;
+  }
+  
+  .data-table th {
+    @apply py-3 px-4 text-left text-white/70 border-b border-border;
+  }
+  
+  .data-table tr {
+    @apply transition-colors border-b border-border/30;
+  }
+  
+  .data-table tr:hover {
+    @apply bg-white/5;
+  }
+  
+  .data-table td {
+    @apply py-4 px-4;
+  }
+  
+  .kpi-card {
+    @apply bg-card/90 border border-border rounded-2xl p-6 flex flex-col 
+           transition-all duration-300 hover:shadow-xl backdrop-blur-md relative overflow-hidden
+           hover:border-primary/30 hover:shadow-glow hover:translate-y-[-5px];
+    background-image: linear-gradient(145deg, rgba(25, 32, 65, 0.7), rgba(18, 26, 53, 0.9));
+  }
+  
+  .kpi-card::after {
+    content: '';
+    @apply absolute -inset-1 rounded-[inherit] z-[-1] opacity-0 transition-opacity duration-300;
+    background: linear-gradient(45deg, rgba(0, 168, 84, 0.2), rgba(25, 118, 210, 0.2));
+    filter: blur(12px);
+  }
+  
+  .kpi-card:hover::after {
     @apply opacity-100;
   }
 

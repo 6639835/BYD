@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import SalesRankChart from '../charts/SalesRankChart';
 import SalesTypeChart from '../charts/SalesTypeChart';
 import MonthlyTrendChart from '../charts/MonthlyTrendChart';
@@ -14,10 +14,35 @@ export default function ChartsSection() {
     currentChart.current = chartId;
     setRefreshKey(prev => prev + 1);
   };
+
+  // Force re-render after initial mount to ensure proper chart sizing
+  const [forceRender, setForceRender] = useState(false);
+  
+  useEffect(() => {
+    // Force a re-render after component mounts
+    setForceRender(true);
+    
+    // Add a small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 500);
+    
+    // Ensure charts resize on window resize
+    const handleResize = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 card">
+      <div className="lg:col-span-2 card overflow-hidden">
         <div className="card-title">
           <span>车型销量排行 TOP 10</span>
           <button 
@@ -31,11 +56,13 @@ export default function ChartsSection() {
             刷新
           </button>
         </div>
-        <SalesRankChart key={`sales-rank-${refreshKey}`} />
+        <div className="w-full h-[400px]">
+          <SalesRankChart key={`sales-rank-${refreshKey}`} />
+        </div>
       </div>
       
       <div className="lg:col-span-1 grid grid-rows-2 gap-6">
-        <div className="card">
+        <div className="card overflow-hidden">
           <div className="card-title">
             <span>销量类型分布</span>
             <button 
@@ -49,10 +76,12 @@ export default function ChartsSection() {
               刷新
             </button>
           </div>
-          <SalesTypeChart key={`sales-type-${refreshKey}`} />
+          <div className="w-full h-[320px]">
+            <SalesTypeChart key={`sales-type-${refreshKey}`} />
+          </div>
         </div>
         
-        <div className="card">
+        <div className="card overflow-hidden">
           <div className="card-title">
             <span>月度销量趋势</span>
             <button 
@@ -66,7 +95,9 @@ export default function ChartsSection() {
               刷新
             </button>
           </div>
-          <MonthlyTrendChart key={`monthly-trend-${refreshKey}`} />
+          <div className="w-full h-[320px]">
+            <MonthlyTrendChart key={`monthly-trend-${refreshKey}`} />
+          </div>
         </div>
       </div>
     </div>
